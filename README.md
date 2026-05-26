@@ -1,188 +1,261 @@
-# Spotme — Project Folder Structure
+# Revela — MVP Architecture
 
-Welcome to the **Spotme** repository. This document outlines the project structure and architectural design for our Next.js event photo platform. It is designed to be highly modular, scalable, and easy to navigate for organizers, photographers, and attendees alike.
+## Overview
+
+Revela is an AI-powered event photo platform where:
+
+* Photographers create events and upload photos.
+* Guests scan a QR code and upload a selfie.
+* AI automatically finds matching photos.
+* If no photos are found immediately, guests are notified later on WhatsApp.
+
+The product is optimized for:
+
+* Fast onboarding
+* Minimal friction
+* AI photo matching
+* WhatsApp-based engagement
+* Event workflows
 
 ---
 
-## 📂 Visual Directory Tree
-
-Here is the exact folder structure established for the platform:
+# Final MVP Folder Structure
 
 ```text
-Spotme/
+Revela/
 │
-├── app/                            # Next.js App Router (pages, layouts, and API routes)
-│   ├── (auth)/                     # Auth route group (URL matches directly e.g. /login)
-│   │   ├── login/                  # Login page
-│   │   ├── register/               # Registration page
-│   │   └── forgot-password/        # Password recovery page
+├── app/
 │   │
-│   ├── (landing)/                  # Marketing site route group
-│   │   ├── page.tsx                # Landing page (hero, social proof, call to actions)
-│   │   ├── pricing/                # Subscription plans and pricing page
-│   │   ├── features/               # Platform details page
-│   │   └── about/                  # Company/product info page
+│   ├── (landing)/
+│   │   ├── page.tsx                     # Landing page
+│   │   ├── pricing/
+│   │   │   └── page.tsx
+│   │   ├── features/
+│   │   │   └── page.tsx
+│   │   └── about/
+│   │       └── page.tsx
 │   │
-│   ├── dashboard/                  # Unified dashboard router
-│   │   ├── organizer/              # Event Organizer view
-│   │   │   ├── events/             # Event management, QR creation, and access codes
-│   │   │   ├── analytics/          # Sales, attendee reach, and photo downloads
-│   │   │   ├── storage/            # Cloud storage allocation and limits
-│   │   │   └── settings/           # Organizer account profile
+│   ├── (auth)/
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   └── register/
+│   │       └── page.tsx
+│   │
+│   ├── dashboard/
 │   │   │
-│   │   ├── photographer/           # Photographer portal
-│   │   │   ├── uploads/            # Multi-image uploading center
-│   │   │   ├── albums/             # Gallery collections & watermarks
-│   │   │   └── settings/           # Rates and profile configurations
+│   │   ├── page.tsx                     # Main dashboard
 │   │   │
-│   │   ├── attendee/               # Guest / Attendee workspace
-│   │   │   ├── gallery/            # General public/event gallery access
-│   │   │   ├── matched-photos/     # AI-matched photos (face recognition matches)
-│   │   │   └── profile/            # Selfie upload (for AI matching) & ticket details
+│   │   ├── events/
+│   │   │   ├── page.tsx                 # All events
+│   │   │   ├── create/
+│   │   │   │   └── page.tsx
+│   │   │   └── [eventId]/
+│   │   │       ├── page.tsx
+│   │   │       ├── attendees/
+│   │   │       │   └── page.tsx         # WhatsApp attendee list
+│   │   │       ├── uploads/
+│   │   │       │   └── page.tsx
+│   │   │       ├── qr/
+│   │   │       │   └── page.tsx
+│   │   │       └── settings/
+│   │   │           └── page.tsx
 │   │   │
-│   │   └── layout.tsx              # Common dashboard structure (Sidebar, Topbar)
+│   │   ├── storage/
+│   │   │   └── page.tsx
+│   │   │
+│   │   └── account/
+│   │       └── page.tsx
 │   │
-│   ├── api/                        # Backend REST / Serverless endpoints
-│   │   ├── auth/                   # Session verification and social OAuth config
-│   │   ├── events/                 # CRUD operations for events
-│   │   ├── uploads/                # Signature generation and upload endpoints
-│   │   ├── ai/                     # AI face recognition matching requests
-│   │   ├── qr/                     # Dynamic QR code generation engine
-│   │   └── users/                  # User profile and account management
+│   ├── event/
+│   │   └── [eventId]/
+│   │       │
+│   │       ├── page.tsx                 # Event public page
+│   │       │
+│   │       ├── join/
+│   │       │   └── page.tsx             # WhatsApp number input
+│   │       │
+│   │       ├── selfie/
+│   │       │   └── page.tsx             # Upload selfie
+│   │       │
+│   │       ├── photos/
+│   │       │   └── page.tsx             # AI matched photos
+│   │       │
+│   │       └── waiting/
+│   │           └── page.tsx             # “We’ll notify you on WhatsApp”
 │   │
-│   ├── globals.css                 # Main styling sheet with Tailwind and global styles
-│   ├── layout.tsx                  # Root html/body wrapper and global providers
-│   └── loading.tsx                 # Site-wide fallback page-load animation
+│   ├── api/
+│   │   │
+│   │   ├── upload/
+│   │   ├── events/
+│   │   ├── ai-match/
+│   │   ├── qr/
+│   │   ├── whatsapp/
+│   │   └── auth/
+│   │
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── loading.tsx
 │
-├── components/                     # Reusable layout and interface parts
-│   ├── ui/                         # Atomic, lower-level UI components (shadcn/radix)
+├── components/
+│   │
+│   ├── ui/
 │   │   ├── button.tsx
 │   │   ├── card.tsx
 │   │   ├── dialog.tsx
-│   │   └── input.tsx
+│   │   ├── input.tsx
+│   │   └── modal.tsx
 │   │
-│   ├── landing/                    # UI elements exclusive to marketing pages
+│   ├── landing/
 │   │   ├── hero.tsx
-│   │   ├── features.tsx
 │   │   ├── pricing.tsx
-│   │   ├── testimonials.tsx
-│   │   └── navbar.tsx
+│   │   ├── navbar.tsx
+│   │   └── features.tsx
 │   │
-│   ├── dashboard/                  # Core dashboard wrapper modules
-│   │   ├── sidebar.tsx             # Collapsible left panel
-│   │   ├── topbar.tsx              # Breadcrumbs, search, notification, and profile
-│   │   ├── analytics-card.tsx      # Chart / numeric metric display
-│   │   └── upload-zone.tsx         # Drag-and-drop media panel
+│   ├── dashboard/
+│   │   ├── sidebar.tsx
+│   │   ├── topbar.tsx
+│   │   ├── upload-zone.tsx
+│   │   └── attendee-table.tsx
 │   │
-│   └── shared/                     # Multi-purpose utility components
-│       ├── logo.tsx                # Brand vectors
-│       ├── loader.tsx              # Inline progress spinners
-│       └── empty-state.tsx         # Search / fetch fallback display
+│   └── shared/
+│       ├── logo.tsx
+│       ├── loader.tsx
+│       └── empty-state.tsx
 │
-├── features/                       # Modular business domain logic (Feature-driven design)
-│   ├── auth/                       # Signup/signin handlers & OAuth workflows
-│   ├── events/                     # Event creation, passcode verification
-│   ├── uploads/                    # File chunking & compression mechanics
-│   ├── ai-matching/                # Core face indexing and matching pipelines
-│   ├── qr-system/                  # PDF/Image QR code exports for tables
-│   └── subscriptions/              # Subscription upgrades and Stripe webhook listeners
+├── lib/
+│   │
+│   ├── supabase.ts                     # Supabase client
+│   ├── ai.ts                           # DeepFace / ArcFace logic
+│   ├── whatsapp.ts                     # WhatsApp notifications
+│   ├── qr.ts                           # QR generation
+│   └── utils.ts
 │
-├── lib/                            # Integrations and helper utilities
-│   ├── db.ts                       # Prisma Client singleton
-│   ├── auth.ts                     # NextAuth configurations
-│   ├── uploadthing.ts              # Uploadthing config client
-│   ├── cloudinary.ts               # Cloudinary CDN management wrapper
-│   ├── stripe.ts                   # Stripe payment methods and SDK settings
-│   ├── ai.ts                       # External AI face-recognition SDK initializer
-│   └── utils.ts                    # CSS class merging and data formatters
+├── hooks/
+│   ├── use-upload.ts
+│   ├── use-toast.ts
+│   └── use-mobile.ts
 │
-├── hooks/                          # Custom React hooks
-│   ├── use-mobile.ts               # Detect viewport sizes
-│   ├── use-toast.ts                # App notifications
-│   └── use-upload.ts               # Handle image upload state and progress
+├── store/
+│   ├── auth-store.ts
+│   ├── event-store.ts
+│   └── upload-store.ts
 │
-├── services/                       # Data fetchers and server-side operations
-│   ├── event.service.ts            # Database queries for event models
-│   ├── auth.service.ts             # Auth tokens and session handlers
-│   ├── upload.service.ts           # Storage signatures and asset databases
-│   ├── ai.service.ts               # Vector matching calls
-│   └── qr.service.ts               # SVG/Canvas QR generation commands
-│
-├── store/                          # Zustand client-side state engines
-│   ├── auth-store.ts               # Current user session cache
-│   ├── event-store.ts              # Active event selection states
-│   └── upload-store.ts             # Active upload batch queues
-│
-├── types/                          # Shared TypeScript types and interfaces
-│   ├── event.ts
+├── types/
 │   ├── user.ts
+│   ├── event.ts
 │   ├── photo.ts
-│   └── api.ts
+│   └── attendee.ts
 │
-├── prisma/                         # Database schema definition
-│   ├── schema.prisma               # Prisma models (User, Event, Photo, Album, etc.)
-│   └── migrations/                 # SQL database schema migration logs
+├── public/
+│   ├── images/
+│   ├── logos/
+│   └── icons/
 │
-├── public/                         # Static files accessible directly
-│   ├── images/                     # Graphic illustrations
-│   ├── icons/                      # Interface vector paths
-│   └── logos/                      # Platform emblems
+├── styles/
+│   └── animations.css
 │
-├── styles/                         # Dedicated stylesheet modules
-│   └── animations.css              # Custom keyframe configurations for transitions
-│
-├── middleware.ts                   # Next.js router middleware (Auth guard, role checks)
-├── next.config.mjs                 # Next.js compiler settings and image domains
-├── tailwind.config.ts              # Tailwind CSS utility and style definitions
-├── tsconfig.json                   # TypeScript configuration files
-├── package.json                    # Dependency listings and app scripts
-└── .env                            # Secure credentials (DB keys, Cloudinary tokens, Stripe secret)
+├── middleware.ts
+├── tailwind.config.ts
+├── next.config.mjs
+├── tsconfig.json
+├── package.json
+└── .env
 ```
 
 ---
 
-## 🏗️ Core Architectural Flow
+# Core Product Flow
 
-```mermaid
-graph TD
-    subgraph Client
-        Landing[Landing / Marketing] --> Auth[Auth Group]
-        Auth --> Dashboard{User Dashboard}
-        Dashboard -->|Organizer| OrgView[Organizer Views]
-        Dashboard -->|Photographer| PhotoView[Photographer Views]
-        Dashboard -->|Attendee| AttView[Attendee Views]
-    end
+## Photographer Flow
 
-    subgraph Business Logic & State
-        OrgView & PhotoView & AttView --> Stores[Zustand Stores]
-        OrgView & PhotoView & AttView --> Hooks[Custom Hooks]
-        Stores & Hooks --> Services[Services Layer]
-    end
-
-    subgraph Server & Database
-        Services --> API[API Routes / Server Actions]
-        API --> Middleware[Middleware Auth & Rate-Limits]
-        Middleware --> Libs[External Libraries: Cloudinary, Stripe, AI]
-        Middleware --> DB[(Prisma / SQL Database)]
-    end
+```text
+Login
+→ Create Event
+→ Upload Photos
+→ AI Processing
+→ QR Code Generated
+→ Share QR At Event
 ```
 
 ---
 
-## ⚡ Next.js Concepts Used In This Structure
+## Event Attendee Flow
 
-1. **Route Groups `(auth)` & `(landing)`**:
-   Folders wrapped in parentheses are used to organize files without affecting the URL path.
-   * `app/(auth)/login/page.tsx` is served at `/login`.
-   * This helps keep code clean and separates public-facing templates from secure portals.
+```text
+Scan QR
+→ Enter WhatsApp Number
+→ Upload Selfie
+→ AI Searches Photos
+→ View Photos
+OR
+→ Wait For WhatsApp Notification
+```
 
-2. **Dashboard Role Division**:
-   Instead of fragmented dashboards, all roles are centralized in `app/dashboard/` while sub-scoped dynamically:
-   * `/dashboard/organizer` — Create events, generate QR codes, analyze metrics.
-   * `/dashboard/photographer` — High-speed uploads and watermarking.
-   * `/dashboard/attendee` — Access matched photos via facial recognition query.
+---
 
-3. **Separation of Services vs. Features**:
-   * **`features/`** contains core business logic packages (e.g., matching mechanisms, QR generation logic).
-   * **`services/`** is dedicated to server-side operations, fetching data from databases, or performing API integrations.
-   * **`components/`** focuses solely on rendering the user interface, separating layout from complex computations.
+# Core MVP Tech Stack
+
+## Frontend
+
+* Next.js
+* React
+* Tailwind CSS
+* Zustand
+
+## Backend
+
+* Supabase
+* Supabase Auth
+* Supabase Storage
+* PostgreSQL + pgvector
+
+## AI Recognition
+
+* DeepFace
+* ArcFace
+* RetinaFace
+
+## Notifications
+
+* WhatsApp API
+
+---
+
+# Core MVP Features
+
+## Photographer
+
+* Create event
+* Upload photos
+* Generate QR codes
+* View attendees
+* Manage storage
+
+## Guest
+
+* Scan QR
+* Upload selfie
+* View AI matched photos
+* Receive WhatsApp notification if photos are not ready
+
+---
+
+# Product Philosophy
+
+The product should feel:
+
+* Fast
+* Invisible
+* Emotional
+* Simple
+
+Guests should never feel like they are using complex software.
+
+The core magic moment is:
+
+```text
+Upload selfie
+→ instantly see your event photos
+```
+
+Everything else is secondary.
