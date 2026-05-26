@@ -1,4 +1,4 @@
-# Revela — MVP Architecture
+# Spotme — MVP Architecture
 
 ## Overview
 
