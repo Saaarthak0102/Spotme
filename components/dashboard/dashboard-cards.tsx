@@ -173,33 +173,45 @@ export function EventsGrid({
 /* ═══════════════════════════════════════════════════
    Storage Card — Storage Usage Overview
    ═══════════════════════════════════════════════════ */
-export function StorageCard() {
+export function StorageCard({ usedBytes, maxGB }: { usedBytes: number; maxGB: number }) {
+  const usedGB = Number((usedBytes / (1024 * 1024 * 1024)).toFixed(3));
+  const availableGB = Math.max(0, maxGB - usedGB);
+  const pct = maxGB > 0 ? Math.min(100, Math.round((usedGB / maxGB) * 100)) : 0;
+
   return (
     <section id="storage" className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/65 p-5 backdrop-blur-xl sm:p-6">
       <h2 className="text-base font-semibold tracking-[-0.035em] sm:text-lg">Storage</h2>
       <div className="mt-5 flex items-center gap-5 sm:mt-6 sm:gap-6">
         {/* Circular indicator */}
-        <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-[conic-gradient(#D67D5C_0_82%,#EFE6DD_82%_100%)] sm:h-24 sm:w-24">
+        <div
+          className="relative flex h-20 w-20 items-center justify-center rounded-full sm:h-24 sm:w-24"
+          style={{
+            background: `conic-gradient(#D67D5C 0% ${pct}%, #EFE6DD ${pct}% 100%)`
+          }}
+        >
           <div className="flex h-[60px] w-[60px] flex-col items-center justify-center rounded-full bg-white sm:h-[74px] sm:w-[74px]">
-            <p className="text-lg font-semibold sm:text-xl">82%</p>
+            <p className="text-lg font-semibold sm:text-xl">{pct}%</p>
             <p className="text-[9px] text-[#827970] sm:text-[10px]">Used</p>
           </div>
         </div>
         <div className="space-y-2.5 text-sm sm:space-y-3">
           <div>
             <p className="text-xs text-[#827970]">Used storage</p>
-            <p className="mt-0.5 font-semibold sm:mt-1">410 GB</p>
+            <p className="mt-0.5 font-semibold sm:mt-1">{usedGB.toFixed(2)} GB</p>
           </div>
           <div>
             <p className="text-xs text-[#827970]">Available</p>
-            <p className="mt-0.5 font-semibold sm:mt-1">90 GB</p>
+            <p className="mt-0.5 font-semibold sm:mt-1">{availableGB.toFixed(2)} GB</p>
           </div>
         </div>
       </div>
-      <div className="mt-5 h-1.5 rounded-full bg-[#EFE6DD] sm:mt-6">
-        <div className="h-full w-[82%] rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261]" />
+      <div className="mt-5 h-1.5 rounded-full bg-[#EFE6DD] sm:mt-6 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261] transition-all"
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      <p className="mt-3 text-xs text-[#827970]">Uploads increased 8.4 GB this week.</p>
+      <p className="mt-3 text-xs text-[#827970]">Max storage limit is {maxGB} GB.</p>
     </section>
   );
 }
@@ -207,34 +219,61 @@ export function StorageCard() {
 /* ═══════════════════════════════════════════════════
    Plan Card — Current Subscription Plan
    ═══════════════════════════════════════════════════ */
-export function PlanCard() {
+export function PlanCard({
+  plan,
+  eventsUsed,
+  maxEvents,
+  usedBytes,
+  maxGB,
+}: {
+  plan: string;
+  eventsUsed: number;
+  maxEvents: number;
+  usedBytes: number;
+  maxGB: number;
+}) {
+  const planLabels: Record<string, string> = {
+    free: "Starter Pack",
+    pro: "Pro Plan",
+    unlimited: "Unlimited Plan",
+  };
+
+  const usedGB = Number((usedBytes / (1024 * 1024 * 1024)).toFixed(3));
+  const availableGB = Math.max(0, maxGB - usedGB);
+
   return (
     <section id="plan" className="overflow-hidden rounded-[26px] bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F] p-5 text-white sm:p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-medium tracking-[-0.035em] sm:text-lg">Pro Plan</h2>
+        <h2 className="text-base font-medium tracking-[-0.035em] sm:text-lg">
+          {planLabels[plan] || "Subscription"}
+        </h2>
         <span className="rounded-full bg-gradient-to-r from-[#D67D5C]/20 to-[#F4A261]/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#F2B29A]">
           Current
         </span>
       </div>
       <div className="mt-5 space-y-2.5 text-sm sm:mt-6 sm:space-y-3">
         <div className="flex justify-between text-white/58">
-          <span>Events remaining</span>
-          <span className="font-medium text-white">8 of 20</span>
+          <span>Events</span>
+          <span className="font-medium text-white">
+            {eventsUsed} of {maxEvents > 10000 ? "∞" : maxEvents}
+          </span>
         </div>
         <div className="flex justify-between text-white/58">
           <span>Storage remaining</span>
-          <span className="font-medium text-white">90 GB</span>
+          <span className="font-medium text-white">
+            {availableGB.toFixed(2)} GB
+          </span>
         </div>
         <div className="flex justify-between text-white/58">
           <span>Renews</span>
-          <span className="font-medium text-white">June 24, 2026</span>
+          <span className="font-medium text-white">Monthly</span>
         </div>
       </div>
       <Link
         href="/dashboard/account"
         className="mt-6 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] py-3 text-xs font-semibold text-white transition-all duration-200 hover:shadow-[0_6px_16px_rgba(214,125,92,0.35)] active:scale-[0.98] sm:mt-7"
       >
-        Upgrade Plan
+        Upgrade / Change Plan
       </Link>
     </section>
   );

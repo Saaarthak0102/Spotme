@@ -231,6 +231,7 @@ function PhotographerModal({
     password: "",
     phone: initial?.phone ?? "",
     bio: initial?.bio ?? "",
+    plan: initial?.plan ?? "free",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -245,7 +246,13 @@ function PhotographerModal({
       const res = await fetch("/api/admin/photographers", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: initial.id, full_name: form.full_name, phone: form.phone, bio: form.bio }),
+        body: JSON.stringify({
+          id: initial.id,
+          full_name: form.full_name,
+          phone: form.phone,
+          bio: form.bio,
+          plan: form.plan
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to update"); setSaving(false); return; }
@@ -323,12 +330,25 @@ function PhotographerModal({
           </div>
 
           <div>
+            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Subscription Plan</label>
+            <select
+              value={form.plan}
+              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value as "free" | "pro" | "unlimited" }))}
+              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#D67D5C]/60"
+            >
+              <option value="free" className="bg-[#18181B]">Starter (Free - 1 Event, 10GB)</option>
+              <option value="pro" className="bg-[#18181B]">Pro (₹1,699/mo - 5 Events, 100GB)</option>
+              <option value="unlimited" className="bg-[#18181B]">Unlimited (₹4,199/mo - Unlimited, 1TB)</option>
+            </select>
+          </div>
+
+          <div>
             <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Bio <span className="text-white/20">(optional)</span></label>
             <textarea
-              rows={3}
+              rows={2}
               value={form.bio}
               onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
-              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60 resize-none"
+              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60 resize-none"
               placeholder="Short bio or specialization..."
             />
           </div>
@@ -420,6 +440,7 @@ export function AdminPhotographers() {
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Contact</th>
                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Events</th>
                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photos</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Plan</th>
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Last Active</th>
                     <th className="px-5 py-3.5" />
                   </tr>
@@ -427,7 +448,7 @@ export function AdminPhotographers() {
                 <tbody className="divide-y divide-white/5">
                   {photographers.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center">
+                      <td colSpan={7} className="px-5 py-12 text-center">
                         <span className="material-symbols-outlined text-[40px] text-white/20 block mb-2">photo_camera</span>
                         <p className="text-white/40 text-sm">No photographers yet. Add one to get started.</p>
                       </td>
@@ -452,6 +473,17 @@ export function AdminPhotographers() {
                       </td>
                       <td className="px-5 py-4 text-right text-white/70 font-medium">{p.eventCount}</td>
                       <td className="px-5 py-4 text-right text-white/70 font-medium">{p.photoCount}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          p.plan === "unlimited"
+                            ? "bg-green-500/15 text-green-400 border border-green-500/10"
+                            : p.plan === "pro"
+                            ? "bg-[#D67D5C]/15 text-[#F4A261] border border-[#D67D5C]/10"
+                            : "bg-white/10 text-white/50 border border-white/5"
+                        }`}>
+                          {p.plan === "free" ? "Starter" : p.plan === "pro" ? "Pro" : "Unlimited"}
+                        </span>
+                      </td>
                       <td className="px-5 py-4 text-white/40 text-xs">
                         {p.lastActive
                           ? new Date(p.lastActive).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })

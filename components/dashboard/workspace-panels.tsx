@@ -364,24 +364,40 @@ export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount:
     navigator.clipboard.writeText(eventUrl);
   };
 
+  const handleDownloadQr = async () => {
+    try {
+      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(eventUrl)}`;
+      const res = await fetch(qrImageUrl);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${event.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-qr.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download QR code", err);
+      window.open(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(eventUrl)}`, "_blank");
+    }
+  };
+
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(eventUrl)}`;
+
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_1fr] sm:gap-5 xl:grid-cols-[390px_1fr]">
       {/* QR Code display */}
       <section className="rounded-[28px] border border-[#2D2D2D]/6 bg-white/60 p-6 text-center backdrop-blur-xl sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#B36144]">Guest entry</p>
-        <div className="mx-auto mt-5 grid h-[220px] w-[220px] grid-cols-6 gap-2 rounded-3xl border border-[#EEE5DB] bg-gradient-to-br from-[#FDF8F1] to-[#FFF6F1] p-5 sm:mt-6 sm:h-[252px] sm:w-[252px] sm:p-6">
-          {Array.from({ length: 36 }).map((_, index) => (
-            <span
-              className={`rounded-[3px] ${
-                [0, 1, 2, 6, 8, 12, 13, 14, 21, 23, 24, 28, 29, 30, 33, 35].includes(index)
-                  ? "bg-[#2D2D2D]"
-                  : index % 5 === 0
-                    ? "bg-[#D67D5C]"
-                    : "bg-transparent"
-              }`}
-              key={index}
-            />
-          ))}
+        <div className="mx-auto mt-5 flex h-[220px] w-[220px] items-center justify-center rounded-3xl border border-[#EEE5DB] bg-white p-5 sm:mt-6 sm:h-[252px] sm:w-[252px] sm:p-6 shadow-inner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrImageUrl}
+            alt="Event Entry QR Code"
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
         </div>
         <p className="mt-4 text-sm font-medium sm:mt-5">{event.name}</p>
         <p className="mt-1 text-xs text-[#827970] break-all">/event/{event.id}</p>
@@ -403,9 +419,15 @@ export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount:
         <div className="mt-6 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
           <button
             onClick={handleCopyLink}
-            className="rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_6px_16px_rgba(214,125,92,0.25)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] sm:px-5 sm:py-3 sm:text-sm"
+            className="rounded-xl bg-[#D67D5C] hover:bg-[#C76F50] px-4 py-2.5 text-xs font-semibold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] sm:px-5 sm:py-3 sm:text-sm"
           >
             Copy event link
+          </button>
+          <button
+            onClick={handleDownloadQr}
+            className="rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_6px_16px_rgba(214,125,92,0.25)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] sm:px-5 sm:py-3 sm:text-sm"
+          >
+            Download QR Code
           </button>
           <Link
             href={`/event/${event.id}`}

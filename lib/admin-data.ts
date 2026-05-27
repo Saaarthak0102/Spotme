@@ -224,6 +224,7 @@ export async function createPhotographer(payload: {
   password: string;
   phone?: string;
   bio?: string;
+  plan?: "free" | "pro" | "unlimited";
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = getAdminClient();
 
@@ -236,6 +237,10 @@ export async function createPhotographer(payload: {
 
   if (error) return { success: false, error: error.message };
 
+  const plan = payload.plan ?? "free";
+  const maxEvents = plan === "free" ? 1 : plan === "pro" ? 5 : 999999;
+  const maxStorage = plan === "free" ? 10 : plan === "pro" ? 100 : 1000;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("profiles").upsert({
     id: data.user.id,
@@ -243,6 +248,9 @@ export async function createPhotographer(payload: {
     role: "photographer",
     phone: payload.phone ?? null,
     bio: payload.bio ?? null,
+    plan,
+    max_events: maxEvents,
+    max_storage_gb: maxStorage,
   });
 
   return { success: true };
@@ -253,14 +261,26 @@ export async function createPhotographer(payload: {
 // -------------------------------------------------------
 export async function updatePhotographer(
   id: string,
-  payload: { full_name?: string; phone?: string; bio?: string }
+  payload: {
+    full_name?: string;
+    phone?: string;
+    bio?: string;
+    plan?: "free" | "pro" | "unlimited";
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getAdminClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: any = { ...payload };
+  if (payload.plan) {
+    updates.max_events = payload.plan === "free" ? 1 : payload.plan === "pro" ? 5 : 999999;
+    updates.max_storage_gb = payload.plan === "free" ? 10 : payload.plan === "pro" ? 100 : 1000;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("profiles")
-    .update({ ...payload, updated_at: new Date().toISOString() })
+    .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };

@@ -26,13 +26,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { full_name, email, password, phone, bio } = body;
+  const { full_name, email, password, phone, bio, plan } = body;
 
   if (!full_name || !email || !password) {
     return NextResponse.json({ error: "full_name, email, and password are required" }, { status: 400 });
   }
 
-  const result = await createPhotographer({ full_name, email, password, phone, bio });
+  const result = await createPhotographer({ full_name, email, password, phone, bio, plan });
   if (!result.success) return NextResponse.json({ error: result.error }, { status: 500 });
 
   return NextResponse.json({ success: true });

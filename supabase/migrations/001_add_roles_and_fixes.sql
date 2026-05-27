@@ -56,7 +56,22 @@ BEGIN
   END IF;
 END $$;
 
--- 4. Allow admin to read all profiles (needed for admin dashboard)
+-- 4. Create is_admin helper function to prevent infinite RLS recursion
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = (select auth.uid()) AND role = 'admin'
+  );
+END;
+$$;
+
+-- Allow admin to read all profiles (needed for admin dashboard)
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles"
   ON public.profiles FOR SELECT
@@ -64,10 +79,7 @@ CREATE POLICY "Admins can view all profiles"
   USING (
     -- Either viewing your own profile OR you are an admin
     (select auth.uid()) = id
-    OR EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = (select auth.uid()) AND p.role = 'admin'
-    )
+    OR public.is_admin()
   );
 
 -- 5. Allow admin to update any profile
@@ -77,17 +89,11 @@ CREATE POLICY "Admins can update all profiles"
   TO authenticated
   USING (
     (select auth.uid()) = id
-    OR EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = (select auth.uid()) AND p.role = 'admin'
-    )
+    OR public.is_admin()
   )
   WITH CHECK (
     (select auth.uid()) = id
-    OR EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = (select auth.uid()) AND p.role = 'admin'
-    )
+    OR public.is_admin()
   );
 
 -- 6. Update handle_new_user trigger function to be SECURITY DEFINER to avoid permission issues during signup

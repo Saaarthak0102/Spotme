@@ -9,7 +9,6 @@ import Link from "next/link";
 export default function Pricing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // Minimal scroll reveal (optional: keep if you want fade-in)
   useEffect(() => {
     const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
@@ -32,7 +31,6 @@ export default function Pricing() {
     };
   }, []);
 
-  // Modern SaaS/Photo AI FAQ
   const faqs = [
     {
       question: "How does AI photo matching work?",
@@ -66,7 +64,6 @@ export default function Pricing() {
             <p className="text-base md:text-lg text-on-surface-variant mb-10">
               Guests scan a QR code, upload a selfie, and instantly find their event photos using AI.
             </p>
-            {/* Optional QR visual (remove if real QR, else use as visual hint) */}
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-surface-container-lowest rounded-md flex items-center justify-center text-on-surface-variant border border-outline-variant/20 text-3xl">
                 <span className="material-symbols-outlined text-[32px]">qr_code</span>
@@ -79,25 +76,25 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* Pricing Tiers (SaaS cards) */}
+        {/* Pricing Tiers */}
         <section className="py-16 bg-background reveal-section">
           <div className="max-w-5xl mx-auto px-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Free Plan */}
               <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 flex flex-col p-7 items-start shadow-sm">
-                <h2 className="text-lg font-bold mb-2 text-on-surface font-sans">Free</h2>
-                <div className="text-3xl font-bold mb-1 font-sans text-primary">Free</div>
+                <h2 className="text-lg font-bold mb-2 text-on-surface font-sans">Starter</h2>
+                <div className="text-3xl font-bold mb-1 font-sans text-primary">₹0</div>
                 <ul className="mb-7 mt-3 text-sm text-on-surface-variant space-y-2 font-sans">
-                  <li>• 1 Event</li>
-                  <li>• 10GB Storage</li>
+                  <li>• 1 Active Event</li>
+                  <li>• 10GB Cloud Storage</li>
                   <li>• AI Face Matching</li>
-                  <li>• QR Event Access</li>
-                  <li>• WhatsApp Notifications</li>
+                  <li>• Dynamic QR Event Access</li>
+                  <li>• WhatsApp Guest Notifications</li>
                   <li>• Public Event Gallery</li>
                   <li>• 7-Day Archive</li>
                 </ul>
                 <Link
-                  href="/inquire"
+                  href="/login"
                   className="mt-auto bg-primary text-on-primary px-5 py-2 rounded-md font-semibold text-sm hover:bg-primary/90 w-full text-center transition"
                 >
                   Start Free
@@ -108,32 +105,32 @@ export default function Pricing() {
               <div className="bg-primary text-on-primary rounded-xl border-2 border-primary flex flex-col p-7 items-start shadow-lg relative z-10">
                 <div className="absolute right-6 top-6 text-xs font-bold bg-white/10 px-2 py-1 rounded uppercase tracking-wide hidden md:block pointer-events-none">Most Popular</div>
                 <h2 className="text-lg font-bold mb-2 font-sans">Pro</h2>
-                <div className="text-3xl font-bold mb-1 font-sans">$20<span className="text-base font-medium ml-1">/month</span></div>
+                <div className="text-3xl font-bold mb-1 font-sans">₹1,699<span className="text-base font-medium ml-1">/month</span></div>
                 <ul className="mb-7 mt-3 text-sm text-on-primary/85 space-y-2 font-sans">
                   <li>• Up to 5 Events</li>
-                  <li>• 200GB Storage</li>
+                  <li>• 100GB Cloud Storage</li>
                   <li>• AI Face Matching</li>
-                  <li>• WhatsApp Notifications</li>
+                  <li>• WhatsApp Guest Notifications</li>
                   <li>• High Resolution Downloads</li>
                   <li>• Event QR Access</li>
                   <li>• Priority AI Processing</li>
                   <li>• Custom Branding</li>
                 </ul>
                 <Link
-                  href="/inquire"
+                  href="/login?plan=pro"
                   className="mt-auto bg-white text-primary px-5 py-2 rounded-md font-semibold text-sm hover:bg-primary/95 hover:text-on-primary w-full text-center transition"
                 >
                   Upgrade to Pro
                 </Link>
               </div>
 
-              {/* Studio Plan */}
+              {/* Unlimited Plan */}
               <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/15 flex flex-col p-7 items-start shadow-sm">
-                <h2 className="text-lg font-bold mb-2 font-sans">Studio</h2>
-                <div className="text-3xl font-bold mb-1 font-sans">$99<span className="text-base font-medium ml-1">/month</span></div>
+                <h2 className="text-lg font-bold mb-2 font-sans">Unlimited</h2>
+                <div className="text-3xl font-bold mb-1 font-sans">₹4,199<span className="text-base font-medium ml-1">/month</span></div>
                 <ul className="mb-7 mt-3 text-sm text-on-surface-variant space-y-2 font-sans">
                   <li>• Unlimited Events</li>
-                  <li>• 2TB Storage</li>
+                  <li>• 1TB Cloud Storage</li>
                   <li>• Team Access</li>
                   <li>• Advanced AI Matching</li>
                   <li>• Priority Support</li>
@@ -142,10 +139,10 @@ export default function Pricing() {
                   <li>• Custom Domains</li>
                 </ul>
                 <Link
-                  href="/inquire"
+                  href="/login?plan=unlimited"
                   className="mt-auto bg-secondary-container text-on-secondary-container px-5 py-2 rounded-md font-semibold text-sm hover:bg-secondary-container/90 w-full text-center transition"
                 >
-                  Contact Sales
+                  Go Unlimited
                 </Link>
               </div>
             </div>
@@ -198,7 +195,7 @@ export default function Pricing() {
             <h2 className="text-2xl md:text-3xl font-bold text-primary mb-7 font-sans">Ready to Launch Your Next Event?</h2>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-5">
               <Link
-                href="/inquire"
+                href="/login"
                 className="bg-primary text-on-primary px-8 py-3 rounded-md font-semibold text-sm hover:bg-primary/95 transition-all duration-200"
               >
                 Create Your First Event

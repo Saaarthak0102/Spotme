@@ -22,14 +22,17 @@ create type public.selfie_status as enum (
 -- Profiles Table (mirrors auth.users)
 -- -------------------------------------------------------
 create table public.profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  full_name   text,
-  avatar_url  text,
-  role        text not null default 'photographer' check (role in ('admin', 'photographer')),
-  phone       text,
-  bio         text,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  id             uuid primary key references auth.users(id) on delete cascade,
+  full_name      text,
+  avatar_url     text,
+  role           text not null default 'photographer' check (role in ('admin', 'photographer')),
+  phone          text,
+  bio            text,
+  plan           text not null default 'free' check (plan in ('free', 'pro', 'unlimited')),
+  max_events     integer not null default 1,
+  max_storage_gb integer not null default 10,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
 
 -- Auto-create profile on new user signup

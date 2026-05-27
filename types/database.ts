@@ -22,6 +22,9 @@ export interface Profile {
   role: "admin" | "photographer";
   phone: string | null;
   bio: string | null;
+  plan: "free" | "pro" | "unlimited";
+  max_events: number;
+  max_storage_gb: number;
   created_at: string;
   updated_at: string;
 }
