@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { activityFeed, dashboardEvents, type EventRecord } from "@/lib/dashboard-data";
+import { dashboardEvents, type EventRecord } from "@/lib/dashboard-data";
 
 function formatCount(value: number) {
   return value.toLocaleString("en-US");
@@ -12,7 +12,6 @@ export function HeroSummary() {
   const stats = [
     { label: "Active events", value: "12", change: "+2 this week", icon: "calendar_today" },
     { label: "Photos uploaded", value: "18.4k", change: "+1,248 today", icon: "photo_camera" },
-    { label: "AI matches today", value: "3,842", change: "96.4% accuracy", icon: "auto_awesome" },
   ];
 
   return (
@@ -27,9 +26,9 @@ export function HeroSummary() {
           Your events are finding their people.
         </h1>
         <p className="mt-3 max-w-lg text-sm leading-6 text-[#766D66]">
-          Three galleries are live today. Lake Como is receiving new matches in real time.
+          Three galleries are live today. Lake Como is receiving new uploads in real time.
         </p>
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:mt-9">
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-2 sm:mt-9">
           {stats.map((stat) => (
             <div
               key={stat.label}
@@ -51,26 +50,6 @@ export function HeroSummary() {
   );
 }
 
-/* ── Status Badge ───────────────────────────────── */
-function StatusBadge({ status }: { status: EventRecord["status"] }) {
-  const styles = {
-    "Live matching": "bg-[#D67D5C]/12 text-[#B65F41]",
-    Processing: "bg-[#F4A261]/18 text-[#A96020]",
-    Ready: "bg-[#E8EFE5] text-[#497044]",
-  };
-
-  return (
-    <span className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm ${styles[status]}`}>
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          status === "Live matching" ? "bg-[#B65F41] animate-pulse" : "bg-current"
-        }`}
-      />
-      {status}
-    </span>
-  );
-}
-
 /* ═══════════════════════════════════════════════════
    Event Card — Individual Event Tile
    ═══════════════════════════════════════════════════ */
@@ -84,9 +63,6 @@ export function EventCard({ event }: { event: EventRecord }) {
           style={{ backgroundImage: `url("${event.cover}")` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#2D2D2D]/50 via-[#2D2D2D]/10 to-transparent" />
-        <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
-          <StatusBadge status={event.status} />
-        </div>
         <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-medium text-[#625D58] backdrop-blur-md sm:bottom-4 sm:right-4 sm:px-3 sm:py-1.5 sm:text-[11px]">
           QR {event.qrActive ? "Active" : "Draft"}
         </span>
@@ -100,32 +76,17 @@ export function EventCard({ event }: { event: EventRecord }) {
           {event.date} · {event.venue}
         </p>
 
-        {/* Stats row */}
-        <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-gradient-to-r from-[#FBF7F2] to-[#FDF9F6] p-3 sm:mt-5">
+        {/* Stats row (No Matches) */}
+        <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-gradient-to-r from-[#FBF7F2] to-[#FDF9F6] p-3 sm:mt-5">
           {[
             { label: "Photos", value: formatCount(event.photos) },
             { label: "Guests", value: formatCount(event.guests) },
-            { label: "Matches", value: formatCount(event.matches) },
           ].map((metric) => (
             <div key={metric.label}>
               <p className="text-[10px] uppercase tracking-wider text-[#958A81]">{metric.label}</p>
               <p className="mt-1 text-sm font-semibold">{metric.value}</p>
             </div>
           ))}
-        </div>
-
-        {/* Progress bar */}
-        <div className="mt-4 sm:mt-5">
-          <div className="mb-2 flex justify-between text-[11px] font-medium text-[#827970]">
-            <span>AI processing</span>
-            <span>{event.progress}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-[#EEE6DD]">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261] transition-all duration-700"
-              style={{ width: `${event.progress}%` }}
-            />
-          </div>
         </div>
 
         {/* Action buttons */}
@@ -157,7 +118,7 @@ export function EventsGrid({ compact = false }: { compact?: boolean }) {
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-[-0.045em] sm:text-xl">Events</h2>
-          {!compact && <p className="mt-1 text-sm text-[#827970]">Active event workspaces and live photo matching.</p>}
+          {!compact && <p className="mt-1 text-sm text-[#827970]">Active event workspaces and gallery delivery.</p>}
         </div>
         {!compact && (
           <Link href="/dashboard/events" className="text-sm font-medium text-[#B36144] transition hover:text-[#D67D5C]">
@@ -165,37 +126,9 @@ export function EventsGrid({ compact = false }: { compact?: boolean }) {
           </Link>
         )}
       </div>
-      <div className={`grid gap-4 sm:gap-5 ${compact ? "sm:grid-cols-2 xl:grid-cols-3" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+      <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {dashboardEvents.map((event) => (
           <EventCard event={event} key={event.id} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════
-   Activity Card — Recent Activity Feed
-   ═══════════════════════════════════════════════════ */
-export function ActivityCard() {
-  return (
-    <section className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/65 p-5 backdrop-blur-xl sm:p-6">
-      <div className="mb-5 flex items-center justify-between sm:mb-6">
-        <h2 className="text-base font-semibold tracking-[-0.035em] sm:text-lg">Recent activity</h2>
-        <button className="text-xs font-medium text-[#B36144] transition hover:text-[#D67D5C]">View all</button>
-      </div>
-      <div className="space-y-1">
-        {activityFeed.map((activity, index) => (
-          <div key={activity.title} className="relative flex gap-3 pb-4 last:pb-0 sm:gap-4 sm:pb-5">
-            {index < activityFeed.length - 1 && <span className="absolute left-[17px] top-10 h-[calc(100%-34px)] w-px bg-gradient-to-b from-[#EBE2D9] to-transparent" />}
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]">
-              <span className="material-symbols-outlined text-[18px]">{activity.icon}</span>
-            </span>
-            <div className="pt-1">
-              <p className="text-sm font-medium">{activity.title}</p>
-              <p className="mt-1 text-xs text-[#827970]">{activity.detail}</p>
-            </div>
-          </div>
         ))}
       </div>
     </section>

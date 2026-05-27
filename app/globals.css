@@ -420,13 +420,41 @@ body {
 }
 
 /* ============================================
+   Guest Page Animations
+   ============================================ */
+.animate-fade-in {
+  animation: guestFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes guestFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: guestSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes guestSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-page-enter {
+  animation: guestPageEnter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes guestPageEnter {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ============================================
    Reduced Motion Overrides
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
   .float-anim, .feature-card, .bg-pulse-anim, .nav-link::after, .nav-underline::after,
   .stagger-in, .animate-marquee, .text-zoom-pulse, .animate-fade-up-word,
   .glass-card, .dash-card, .dash-card-accent, .status-live, .status-processing,
-  .shimmer, .page-enter, .sidebar-overlay, .sidebar-drawer {
+  .shimmer, .page-enter, .sidebar-overlay, .sidebar-drawer,
+  .animate-fade-in, .animate-slide-in, .animate-page-enter {
     animation: none !important;
     transition: none !important;
     transform: none !important;

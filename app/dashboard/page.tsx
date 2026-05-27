@@ -1,5 +1,4 @@
 import {
-  ActivityCard,
   EventsGrid,
   HeroSummary,
   PlanCard,
@@ -15,7 +14,6 @@ export default function DashboardPage() {
         <div className="grid gap-5 2xl:grid-cols-[1fr_352px] sm:gap-7">
           <EventsGrid />
           <aside className="space-y-4 sm:space-y-5">
-            <ActivityCard />
             <StorageCard />
             <PlanCard />
           </aside>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { attendeeRows, eventActivity, galleryImages, type EventRecord } from "@/lib/dashboard-data";
+import { attendeeRows, galleryImages, type EventRecord } from "@/lib/dashboard-data";
 
 /* ── Reusable Mini Stat Card ────────────────────── */
 function MiniStat({
@@ -32,67 +32,31 @@ function MiniStat({
    ═══════════════════════════════════════════════════ */
 export function EventOverviewPanel({ event }: { event: EventRecord }) {
   return (
-    <>
+    <div className="space-y-5">
       {/* Stats row */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
         <MiniStat label="Total uploads" value={event.photos.toLocaleString()} note="+248 in the last hour" icon="photo_camera" />
         <MiniStat label="Guest joins" value={event.guests.toLocaleString()} note="12 joined today" icon="groups" />
-        <MiniStat label="AI matches" value={event.matches.toLocaleString()} note="96.4% success rate" icon="auto_awesome" />
         <MiniStat label="Deliveries" value="87" note="WhatsApp notifications sent" icon="forum" />
       </div>
 
-      {/* AI Processing + Activity */}
-      <div className="mt-5 grid gap-4 xl:grid-cols-[1.15fr_0.85fr] sm:mt-6 sm:gap-5">
-        <section className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl sm:p-7">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">AI processing</h2>
-              <p className="mt-1 text-xs text-[#827970]">Facial matching runs continuously as new photos arrive.</p>
+      {/* Main info card */}
+      <section className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl sm:p-7">
+        <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Event workspace</h2>
+        <p className="mt-1 text-xs text-[#827970]">Monitor your photo archives and deliver photos to guests via QR code.</p>
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:mt-8 sm:gap-3">
+          {[
+            { label: "Files uploaded", value: event.photos.toLocaleString() },
+            { label: "Guests joined", value: event.guests.toLocaleString() },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl bg-gradient-to-br from-[#FBF7F2] to-[#FFF6F1] p-4">
+              <p className="text-[10px] text-[#827970] sm:text-[11px]">{item.label}</p>
+              <p className="mt-1.5 text-base font-semibold sm:mt-2 sm:text-lg">{item.value}</p>
             </div>
-            <p className="text-2xl font-semibold tracking-[-0.05em] sm:text-3xl">{event.progress}%</p>
-          </div>
-          <div className="mt-6 h-2 overflow-hidden rounded-full bg-[#EFE6DD] sm:mt-8">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261] transition-all duration-700" style={{ width: `${event.progress}%` }} />
-          </div>
-          <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-8 sm:gap-3">
-            {[
-              { label: "Faces detected", value: "7,942" },
-              { label: "Pending review", value: "46" },
-              { label: "Avg. match time", value: "1.8s" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-2xl bg-gradient-to-br from-[#FBF7F2] to-[#FFF6F1] p-3 sm:p-4">
-                <p className="text-[10px] text-[#827970] sm:text-[11px]">{item.label}</p>
-                <p className="mt-1.5 text-base font-semibold sm:mt-2 sm:text-lg">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-        <ActivityTimeline />
-      </div>
-    </>
-  );
-}
-
-/* ── Activity Timeline ──────────────────────────── */
-export function ActivityTimeline() {
-  return (
-    <section className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl sm:p-7">
-      <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Event activity</h2>
-      <div className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
-        {eventActivity.map((activity, index) => (
-          <div key={activity} className="flex gap-3 sm:gap-4">
-            <div className="flex flex-col items-center">
-              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-[#D67D5C] to-[#F4A261]" />
-              {index !== eventActivity.length - 1 && <span className="mt-2 h-full min-h-6 w-px bg-gradient-to-b from-[#EBE2D9] to-transparent sm:min-h-7" />}
-            </div>
-            <div className="pb-2">
-              <p className="text-sm leading-5 text-[#4D4945]">{activity}</p>
-              <p className="mt-1 text-xs text-[#92877F]">{index * 13 + 2} min ago</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -102,7 +66,7 @@ export function ActivityTimeline() {
 export function UploadsPanel() {
   const uploads = [
     { name: "Reception_Cam03_0942.CR3", progress: 100, state: "Processed" },
-    { name: "Ceremony_Cam02_1780.CR3", progress: 74, state: "AI processing" },
+    { name: "Ceremony_Cam02_1780.CR3", progress: 74, state: "Uploading" },
     { name: "Cocktails_Cam01_2241.CR3", progress: 32, state: "Uploading" },
   ];
 
@@ -116,7 +80,7 @@ export function UploadsPanel() {
           </span>
           <h2 className="mt-4 text-lg font-semibold tracking-[-0.04em] sm:mt-5 sm:text-xl">Drop original photos here</h2>
           <p className="mt-2 max-w-sm text-xs leading-5 text-[#827970] sm:text-sm sm:leading-6">
-            RAW, JPEG or HEIC up to 10 GB per upload. AI begins indexing as files arrive.
+            RAW, JPEG or HEIC up to 10 GB per upload.
           </p>
           <button className="mt-5 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-5 py-2.5 text-xs font-semibold text-white shadow-[0_6px_16px_rgba(214,125,92,0.25)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] sm:mt-6 sm:px-6 sm:py-3 sm:text-sm">
             Browse Files
@@ -150,13 +114,10 @@ export function UploadsPanel() {
       <section className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl xl:col-span-2 sm:p-6">
         <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Recently processed</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 sm:mt-5 sm:gap-4">
-          {galleryImages.slice(0, 4).map((image, index) => (
+          {galleryImages.slice(0, 4).map((image) => (
             <div key={image} className="group relative h-32 overflow-hidden rounded-2xl sm:h-40">
               <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 will-change-transform group-hover:scale-105" style={{ backgroundImage: `url("${image}")` }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium backdrop-blur-sm sm:bottom-3 sm:left-3 sm:px-2.5 sm:py-1">
-                {index * 12 + 8} matches
-              </span>
             </div>
           ))}
         </div>
@@ -174,7 +135,7 @@ export function AttendeesPanel() {
       <div className="flex flex-col gap-3 border-b border-[#2D2D2D]/6 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
           <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Guest directory</h2>
-          <p className="mt-1 text-xs text-[#827970]">Selfie submissions and matched-photo deliveries.</p>
+          <p className="mt-1 text-xs text-[#827970]">Selfie submissions and photo delivery.</p>
         </div>
         <button className="w-fit rounded-xl border border-[#DED5CC] px-4 py-2.5 text-xs font-semibold transition hover:bg-[#FDF8F1]">Export list</button>
       </div>
@@ -195,8 +156,7 @@ export function AttendeesPanel() {
               </div>
               <span className="rounded-full bg-gradient-to-r from-[#F3EDE7] to-[#F7F1EC] px-3 py-1.5 text-[11px] font-medium text-[#625D58]">{attendee.status}</span>
             </div>
-            <div className="mt-3 flex justify-between text-xs text-[#827970]">
-              <span>{attendee.matches} photos matched</span>
+            <div className="mt-3 flex justify-end text-xs text-[#827970]">
               <span>{attendee.lastActive}</span>
             </div>
           </div>
@@ -208,7 +168,7 @@ export function AttendeesPanel() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-gradient-to-r from-[#FCF9F5] to-[#FDF8F3] text-[11px] uppercase tracking-wider text-[#92877F]">
             <tr>
-              {["Guest name", "WhatsApp number", "Photos matched", "Status", "Last activity"].map((column) => (
+              {["Guest name", "WhatsApp number", "Status", "Last activity"].map((column) => (
                 <th className="px-6 py-4 font-medium" key={column}>{column}</th>
               ))}
             </tr>
@@ -225,7 +185,6 @@ export function AttendeesPanel() {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-[#766D66] sm:py-5">{attendee.phone}</td>
-                <td className="px-6 py-4 font-medium sm:py-5">{attendee.matches}</td>
                 <td className="px-6 py-4 sm:py-5">
                   <span className="rounded-full bg-gradient-to-r from-[#F3EDE7] to-[#F7F1EC] px-3 py-1.5 text-xs text-[#625D58]">{attendee.status}</span>
                 </td>
@@ -307,28 +266,21 @@ export function QrPanel({ event }: { event: EventRecord }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   AI Matching Panel
+   AI Matching Panel (Now styled as general Media panel)
    ═══════════════════════════════════════════════════ */
 export function MatchingPanel() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr] sm:gap-5">
       {/* Pipeline status */}
       <section className="rounded-[28px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl sm:p-7">
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold tracking-[-0.045em] sm:text-xl">AI matching pipeline</h2>
-            <p className="mt-2 text-sm text-[#827970]">Matching in real time as photos arrive.</p>
-          </div>
-          <span className="flex h-fit items-center gap-1.5 self-start rounded-full bg-[#D67D5C]/12 px-3 py-1.5 text-xs font-semibold text-[#B36144]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#B36144] animate-pulse" />
-            Live
-          </span>
+        <div>
+          <h2 className="text-lg font-semibold tracking-[-0.045em] sm:text-xl">Media manager</h2>
+          <p className="mt-2 text-sm text-[#827970]">Continuous background sync with guest devices.</p>
         </div>
-        <div className="mt-6 grid gap-2 sm:mt-8 sm:grid-cols-3 sm:gap-3">
+        <div className="mt-6 grid gap-2 sm:mt-8 sm:grid-cols-2 sm:gap-3">
           {[
             { label: "Faces detected", value: "7,942" },
-            { label: "Pending matches", value: "46" },
-            { label: "Success rate", value: "96.4%" },
+            { label: "Deliveries today", value: "87" },
           ].map((metric) => (
             <div key={metric.label} className="rounded-2xl bg-gradient-to-br from-[#FBF7F2] to-[#FFF6F1] p-4 sm:p-5">
               <p className="text-xs text-[#827970]">{metric.label}</p>
@@ -336,15 +288,11 @@ export function MatchingPanel() {
             </div>
           ))}
         </div>
-        <div className="mt-6 sm:mt-8">
-          <div className="mb-2 flex justify-between text-xs text-[#827970] sm:mb-3"><span>Current batch processing</span><span>92%</span></div>
-          <div className="h-2 rounded-full bg-[#EFE6DD]"><div className="h-full w-[92%] rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261]" /></div>
-        </div>
       </section>
 
-      {/* Recently matched guests */}
+      {/* Recently active guests */}
       <section className="rounded-[28px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl sm:p-7">
-        <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Recently matched guests</h2>
+        <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Recently active guests</h2>
         <div className="mt-5 space-y-3 sm:mt-6 sm:space-y-4">
           {attendeeRows.slice(0, 4).map((guest) => (
             <div key={guest.name} className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-[#FBF7F2]/80">
@@ -353,7 +301,7 @@ export function MatchingPanel() {
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{guest.name}</p>
-                <p className="text-xs text-[#827970]">{guest.matches} matched photos</p>
+                <p className="text-xs text-[#827970]">{guest.status}</p>
               </div>
               <span className="ml-auto shrink-0 text-xs text-[#827970]">{guest.lastActive}</span>
             </div>
@@ -377,7 +325,7 @@ export function GalleryPanel() {
           <input className="w-full bg-transparent text-sm outline-none" placeholder="Search gallery" />
         </label>
         <div className="flex gap-2 overflow-x-auto sm:gap-3">
-          {["All photos", "Matched", "Unmatched", "Favorites"].map((filter, index) => (
+          {["All photos", "Favorites"].map((filter, index) => (
             <button
               key={filter}
               className={`h-10 shrink-0 rounded-xl px-3 text-xs font-semibold transition-all duration-200 active:scale-[0.97] sm:h-11 sm:px-4 ${
@@ -399,9 +347,6 @@ export function GalleryPanel() {
           >
             <div className="absolute inset-0 bg-cover bg-center transition-transform duration-500 will-change-transform group-hover:scale-105" style={{ backgroundImage: `url("${image}")` }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <p className="absolute bottom-3 left-3 translate-y-3 text-xs font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:bottom-4 sm:left-4">
-              {index * 9 + 14} matches
-            </p>
           </article>
         ))}
       </div>
@@ -414,7 +359,7 @@ export function GalleryPanel() {
    ═══════════════════════════════════════════════════ */
 export function SettingsPanel() {
   const settings = [
-    { title: "Event visibility", description: "Allow guests with QR access to view matched images.", action: "Public to guests", icon: "visibility" },
+    { title: "Event visibility", description: "Allow guests with QR access to view matching images.", action: "Public to guests", icon: "visibility" },
     { title: "Gallery expiration", description: "Automatically archive delivered galleries after the event.", action: "30 days", icon: "schedule" },
     { title: "Branding settings", description: "Logo, accent and delivery message shown to guests.", action: "Customize", icon: "palette" },
     { title: "Reset QR access", description: "Issue a new QR code and expire all previous entry links.", action: "Reset code", icon: "qr_code_2" },
@@ -443,7 +388,7 @@ export function SettingsPanel() {
       <section className="h-fit rounded-[26px] border border-[#D67D5C]/18 bg-gradient-to-br from-[#FFF5F0] to-[#FFF9F5] p-5 sm:p-6">
         <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">Danger zone</h2>
         <p className="mt-3 text-xs leading-5 text-[#766D66]">
-          Archiving hides the event from guests. Deleting permanently removes photos and match data.
+          Archiving hides the event from guests. Deleting permanently removes photos.
         </p>
         <button className="mt-5 w-full rounded-xl border border-[#D67D5C]/25 bg-white py-2.5 text-xs font-semibold text-[#B36144] transition hover:bg-[#FFF5F0] active:scale-[0.98] sm:mt-6 sm:py-3">Archive event</button>
         <button className="mt-2.5 w-full rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] py-2.5 text-xs font-semibold text-white transition hover:shadow-[0_6px_16px_rgba(214,125,92,0.3)] active:scale-[0.98] sm:mt-3 sm:py-3">Delete event</button>
