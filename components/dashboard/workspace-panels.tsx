@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Event as EventRecord, EventPhoto, Guest } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
@@ -358,7 +358,13 @@ export function AttendeesPanel({ guests }: { guests: Guest[] }) {
    QR Panel
    ═══════════════════════════════════════════════════ */
 export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount: number }) {
-  const eventUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/event/${event.id}`;
+  const [origin, setOrigin] = useState<string>("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const eventUrl = `${origin || "https://spotme.revela.com"}/event/${event.id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(eventUrl);
