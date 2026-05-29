@@ -42,6 +42,8 @@ export interface AdminStats {
   thisMonthEvents: number;
   thisMonthPhotos: number;
   thisMonthGuests: number;
+  todayPhotos: number;
+  todaySelfies: number;
 }
 
 export async function fetchAdminStats(): Promise<AdminStats> {
@@ -49,6 +51,7 @@ export async function fetchAdminStats(): Promise<AdminStats> {
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
   const [
     photographersRes,
@@ -59,6 +62,8 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     monthEventsRes,
     monthPhotosRes,
     monthGuestsRes,
+    todayPhotosRes,
+    todaySelfiesRes,
   ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("profiles").select("id", { count: "exact", head: true }).eq("role", "photographer"),
@@ -76,6 +81,10 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     (supabase as any).from("event_photos").select("id", { count: "exact", head: true }).gte("uploaded_at", monthStart),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("guests").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("event_photos").select("id", { count: "exact", head: true }).gte("uploaded_at", todayStart),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("guest_selfies").select("id", { count: "exact", head: true }).gte("uploaded_at", todayStart),
   ]);
 
   return {
@@ -87,6 +96,8 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     thisMonthEvents: monthEventsRes.count ?? 0,
     thisMonthPhotos: monthPhotosRes.count ?? 0,
     thisMonthGuests: monthGuestsRes.count ?? 0,
+    todayPhotos: todayPhotosRes.count ?? 0,
+    todaySelfies: todaySelfiesRes.count ?? 0,
   };
 }
 

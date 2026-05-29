@@ -9,7 +9,6 @@ export type { Guest, EventPhoto };
 
 /**
  * Register (or re-find) a guest by phone number for an event.
- * Called client-side from the verify page.
  */
 export async function registerGuest(
   eventId: string,
@@ -18,7 +17,6 @@ export async function registerGuest(
 ): Promise<Guest | null> {
   const supabase = createClient();
 
-  // Check if guest already exists
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing } = await (supabase as any)
     .from("guests")
@@ -76,53 +74,161 @@ export async function uploadGuestSelfie(payload: {
   return data as { id: string };
 }
 
+const GALLERY_PAGE_SIZE = 24;
+
 /**
- * Fetch all event photos (for my-photos page — uses client-side).
+ * Fetch event photos with cursor-based pagination (24 per page).
+ * Uses thumb_url for fast grid rendering when available.
  */
-export async function fetchGuestGalleryClient(eventId: string): Promise<EventPhoto[]> {
+export async function fetchGuestGalleryClient(
+  eventId: string,
+  cursor?: string // ISO timestamp of the last item from previous page
+): Promise<{ photos: EventPhoto[]; nextCursor: string | null }> {
+  const supabase = createClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any)
+    .from("event_photos")
+    .select(
+      "id, storage_path, public_url, thumb_url, medium_url, blur_hash, original_filename, uploaded_at, file_size_bytes, mime_type"
+    )
+    .eq("event_id", eventId)
+    .order("uploaded_at", { ascending: false })
+    .limit(GALLERY_PAGE_SIZE);
+
+  if (cursor) {
+    query = query.lt("uploaded_at", cursor);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("fetchGuestGalleryClient error:", error.message);
+    return { photos: [], nextCursor: null };
+  }
+
+  const photos = (data ?? []) as EventPhoto[];
+  const nextCursor =
+    photos.length === GALLERY_PAGE_SIZE
+      ? (photos[photos.length - 1] as EventPhoto & { uploaded_at: string })
+          .uploaded_at
+      : null;
+
+  return { photos, nextCursor };
+}
+
+/**
+ * Fetch photos matched to a specific guest from the photo_matches cache table.
+ * This is a pure DB read — no AI call on page load.
+ */
+export async function fetchMyPhotos(
+  guestId: string,
+  eventId: string
+): Promise<EventPhoto[]> {
   const supabase = createClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
-    .from("event_photos")
-    .select("*")
+    .from("photo_matches")
+    .select(
+      `
+      similarity,
+      event_photos:event_photos!photo_id (
+        id, storage_path, public_url, thumb_url, medium_url, blur_hash,
+        original_filename, uploaded_at, file_size_bytes, mime_type
+      )
+      `
+    )
+    .eq("guest_id", guestId)
     .eq("event_id", eventId)
-    .order("uploaded_at", { ascending: false });
+    .order("similarity", { ascending: false });
 
   if (error) {
-    console.error("fetchGuestGalleryClient error:", error.message);
+    console.error("fetchMyPhotos error:", error.message);
     return [];
   }
 
-  return (data ?? []) as EventPhoto[];
+  return ((data ?? []) as Array<{ event_photos: EventPhoto }>)
+    .map((row) => row.event_photos)
+    .filter(Boolean);
 }
 
 /**
- * Fetch photos matched to a specific guest.
+ * Check whether a guest has any cached photo matches (non-blocking status check).
+ * Returns 'processing', 'matched', 'no_face', 'uploaded', or null if no selfie found.
  */
-export async function fetchMyPhotos(guestId: string): Promise<EventPhoto[]> {
+export async function getGuestSelfieStatus(
+  guestId: string,
+  eventId: string
+): Promise<{
+  selfieId: string | null;
+  selfieUrl: string | null;
+  status: string | null;
+  matchCount: number;
+}> {
   const supabase = createClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: matches, error: matchError } = await (supabase as any)
-    .from("photo_matches")
-    .select("event_photo_id")
-    .eq("guest_id", guestId);
+  const { data: selfieData } = await (supabase as any)
+    .from("guest_selfies")
+    .select("id, public_url, status, uploaded_at")
+    .eq("guest_id", guestId)
+    .eq("event_id", eventId)
+    .order("uploaded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (matchError || !matches?.length) return [];
-
-  const photoIds = (matches as { event_photo_id: string }[]).map((m) => m.event_photo_id);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: photos, error: photoError } = await (supabase as any)
-    .from("event_photos")
-    .select("*")
-    .in("id", photoIds);
-
-  if (photoError) {
-    console.error("fetchMyPhotos error:", photoError.message);
-    return [];
+  if (!selfieData) {
+    return { selfieId: null, selfieUrl: null, status: null, matchCount: 0 };
   }
 
-  return (photos ?? []) as EventPhoto[];
+  // Count cached matches
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count } = await (supabase as any)
+    .from("photo_matches")
+    .select("id", { count: "exact", head: true })
+    .eq("guest_id", guestId)
+    .eq("event_id", eventId);
+
+  let status = selfieData.status as string;
+
+  // Cache Stale Detection: If photographer uploaded new photos after the guest last matched,
+  // we force the status back to 'uploaded' to trigger a background re-run of the AI match.
+  if (status === "matched" || status === "uploaded") {
+    // 1. Get the latest match time for this guest
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: latestMatch } = await (supabase as any)
+      .from("photo_matches")
+      .select("matched_at")
+      .eq("guest_id", guestId)
+      .eq("event_id", eventId)
+      .order("matched_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 2. Get the latest photo upload time for this event
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: latestPhoto } = await (supabase as any)
+      .from("event_photos")
+      .select("uploaded_at")
+      .eq("event_id", eventId)
+      .order("uploaded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const lastMatchTime = latestMatch 
+      ? new Date(latestMatch.matched_at) 
+      : new Date(selfieData.uploaded_at || 0);
+
+    if (latestPhoto && new Date(latestPhoto.uploaded_at) > lastMatchTime) {
+      status = "uploaded";
+    }
+  }
+
+  return {
+    selfieId: selfieData.id as string,
+    selfieUrl: selfieData.public_url as string,
+    status: status,
+    matchCount: count ?? 0,
+  };
 }

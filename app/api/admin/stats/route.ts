@@ -12,7 +12,7 @@ export async function GET() {
 
   const [stats, events, chartData] = await Promise.all([
     fetchAdminStats(),
-    fetchAllEvents(20),
+    fetchAllEvents(500),
     fetchAllChartData(),
   ]);
 

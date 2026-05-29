@@ -60,7 +60,7 @@ export function DonutChart({ data, size = 200, title }: DonutChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div style={{ width: size, textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
+      <div style={{ width: size, textAlign: "center", color: "#827970", fontSize: 13 }}>
         No data
       </div>
     );
@@ -94,7 +94,7 @@ export function DonutChart({ data, size = 200, title }: DonutChartProps) {
       }}
     >
       {title && (
-        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        <span style={{ color: "#827970", fontSize: 12, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
           {title}
         </span>
       )}
@@ -106,7 +106,7 @@ export function DonutChart({ data, size = 200, title }: DonutChartProps) {
           cy={center}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.06)"
+          stroke="rgba(45, 45, 45, 0.06)"
           strokeWidth={strokeWidth}
         />
 
@@ -137,7 +137,7 @@ export function DonutChart({ data, size = 200, title }: DonutChartProps) {
           y={center - 6}
           textAnchor="middle"
           dominantBaseline="central"
-          fill="white"
+          fill="#2D2D2D"
           fontSize={size * 0.17}
           fontWeight={700}
           fontFamily="system-ui, -apple-system, sans-serif"
@@ -150,7 +150,7 @@ export function DonutChart({ data, size = 200, title }: DonutChartProps) {
           y={center + size * 0.1}
           textAnchor="middle"
           dominantBaseline="central"
-          fill="rgba(255,255,255,0.35)"
+          fill="#827970"
           fontSize={size * 0.065}
           fontWeight={500}
           fontFamily="system-ui, -apple-system, sans-serif"
@@ -183,10 +183,10 @@ export function DonutChart({ data, size = 200, title }: DonutChartProps) {
                 flexShrink: 0,
               }}
             />
-            <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontFamily: "system-ui, sans-serif" }}>
+            <span style={{ color: "#827970", fontSize: 12, fontFamily: "system-ui, sans-serif" }}>
               {d.label}
             </span>
-            <span style={{ color: "white", fontSize: 12, fontWeight: 600, fontFamily: "system-ui, sans-serif" }}>
+            <span style={{ color: "#2D2D2D", fontSize: 12, fontWeight: 600, fontFamily: "system-ui, sans-serif" }}>
               {d.value.toLocaleString()}
             </span>
           </div>
@@ -250,7 +250,7 @@ export function AreaLineChart({ data, height = 260 }: AreaLineChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
+      <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "#827970", fontSize: 13 }}>
         No data
       </div>
     );
@@ -313,7 +313,7 @@ export function AreaLineChart({ data, height = 260 }: AreaLineChartProps) {
                 boxShadow: `0 0 6px ${s.color}55`,
               }}
             />
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontFamily: "system-ui, sans-serif" }}>
+            <span style={{ color: "#827970", fontSize: 12, fontFamily: "system-ui, sans-serif" }}>
               {s.label}
             </span>
           </div>
@@ -344,7 +344,7 @@ export function AreaLineChart({ data, height = 260 }: AreaLineChartProps) {
               y1={g.y}
               x2={pad.left + plotW}
               y2={g.y}
-              stroke="rgba(255,255,255,0.06)"
+              stroke="rgba(45, 45, 45, 0.06)"
               strokeDasharray={i === 0 ? "none" : "4 4"}
             />
             <text
@@ -352,7 +352,7 @@ export function AreaLineChart({ data, height = 260 }: AreaLineChartProps) {
               y={g.y}
               textAnchor="end"
               dominantBaseline="central"
-              fill="rgba(255,255,255,0.3)"
+              fill="#827970"
               fontSize={10}
               fontFamily="system-ui, sans-serif"
             >
@@ -368,7 +368,7 @@ export function AreaLineChart({ data, height = 260 }: AreaLineChartProps) {
             x={pad.left + i * xStep}
             y={height - 10}
             textAnchor="middle"
-            fill="rgba(255,255,255,0.35)"
+            fill="#827970"
             fontSize={10}
             fontFamily="system-ui, sans-serif"
           >
@@ -411,7 +411,7 @@ export function AreaLineChart({ data, height = 260 }: AreaLineChartProps) {
                   cx={x}
                   cy={y}
                   r={3.5}
-                  fill="#0F0F11"
+                  fill="white"
                   stroke={s.color}
                   strokeWidth={2}
                   style={{
@@ -455,7 +455,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13, padding: 20 }}>
+      <div style={{ textAlign: "center", color: "#827970", fontSize: 13, padding: 20 }}>
         No data
       </div>
     );
@@ -476,7 +476,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
       {title && (
         <div
           style={{
-            color: "rgba(255,255,255,0.4)",
+            color: "#827970",
             fontSize: 12,
             fontWeight: 500,
             letterSpacing: "0.04em",
@@ -525,7 +525,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
                 y={y + barH / 2}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="rgba(255,255,255,0.2)"
+                fill="rgba(45, 45, 45, 0.2)"
                 fontSize={11}
                 fontWeight={600}
                 fontFamily="system-ui, sans-serif"
@@ -538,7 +538,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
                 x={rankW + 4}
                 y={d.secondary ? y + barH / 2 - 5 : y + barH / 2}
                 dominantBaseline="central"
-                fill="rgba(255,255,255,0.85)"
+                fill="#2D2D2D"
                 fontSize={13}
                 fontWeight={500}
                 fontFamily="system-ui, sans-serif"
@@ -550,7 +550,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
                   x={rankW + 4}
                   y={y + barH / 2 + 10}
                   dominantBaseline="central"
-                  fill="rgba(255,255,255,0.25)"
+                  fill="#827970"
                   fontSize={10}
                   fontFamily="system-ui, sans-serif"
                 >
@@ -565,7 +565,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
                 width={barAreaW}
                 height={barH - 8}
                 rx={6}
-                fill="rgba(255,255,255,0.04)"
+                fill="rgba(45, 45, 45, 0.04)"
               />
 
               {/* Glow layer */}
@@ -601,7 +601,7 @@ export function HorizontalBarChart({ data, title }: HorizontalBarChartProps) {
                 y={y + barH / 2}
                 textAnchor="end"
                 dominantBaseline="central"
-                fill="white"
+                fill="#2D2D2D"
                 fontSize={13}
                 fontWeight={600}
                 fontFamily="system-ui, sans-serif"

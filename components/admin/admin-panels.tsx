@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { AdminStats, PhotographerRow, AdminEventRow, AdminChartData } from "@/lib/admin-data";
 import { DonutChart, AreaLineChart, HorizontalBarChart } from "@/components/admin/charts";
 
@@ -13,29 +13,29 @@ const nav = [
   { label: "Events", href: "/admin/events", icon: "photo_library" },
 ];
 
-/* ── Reusable stat card ── */
+/* ── Reusable warm stat card ── */
 function StatCard({
   label, value, sub, icon, accent,
 }: {
   label: string; value: string | number; sub?: string; icon: string; accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/5 p-5 backdrop-blur-sm">
+    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-5 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)] hover:shadow-[0_8px_30px_rgba(148,73,44,0.06)] transition-all duration-300">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-white/40 uppercase tracking-widest">{label}</p>
-          <p className={`mt-1.5 text-3xl font-bold tracking-tight ${accent ?? "text-white"}`}>
+          <p className="text-[10px] font-semibold text-[#827970] uppercase tracking-widest leading-none">{label}</p>
+          <p className={`mt-2 text-3xl font-bold tracking-tight ${accent ?? "text-[#2D2D2D]"}`}>
             {typeof value === "number" ? value.toLocaleString() : value}
           </p>
-          {sub && <p className="mt-1 text-xs text-white/40">{sub}</p>}
+          {sub && <p className="mt-1 text-xs text-[#827970] font-medium">{sub}</p>}
         </div>
-        <span className={`material-symbols-outlined text-[28px] ${accent ?? "text-white/30"}`}>{icon}</span>
+        <span className={`material-symbols-outlined text-[28px] ${accent ?? "text-[#D67D5C]/60"}`}>{icon}</span>
       </div>
     </div>
   );
 }
 
-/* ── Sidebar ── */
+/* ── Warm Sidebar ── */
 function AdminSidebar({ active }: { active: string }) {
   const router = useRouter();
   const handleSignOut = async () => {
@@ -44,16 +44,16 @@ function AdminSidebar({ active }: { active: string }) {
   };
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-60 border-r border-white/8 bg-[#0F0F11] flex flex-col z-30">
+    <aside className="fixed top-0 left-0 h-screen w-60 border-r border-[#EFE6DD] bg-[#FAF5EF] flex flex-col z-30">
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-white/8">
+      <div className="px-5 py-5 border-b border-[#EFE6DD]">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#C46A4A] text-white shadow-sm">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#B36144] text-white shadow-md shadow-primary/10">
             <span className="material-symbols-outlined text-[16px]">shield</span>
           </span>
           <div>
-            <span className="text-sm font-bold text-white tracking-tight">Revela Admin</span>
-            <p className="text-[10px] text-white/30 leading-none mt-0.5">Super Admin</p>
+            <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Revela Admin</span>
+            <p className="text-[10px] text-[#827970] font-medium leading-none mt-0.5">Super Admin</p>
           </div>
         </div>
       </div>
@@ -68,8 +68,8 @@ function AdminSidebar({ active }: { active: string }) {
               href={item.href}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-[#D67D5C]/20 text-[#F4A261]"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
+                  ? "bg-[#D67D5C]/10 text-[#94492c]"
+                  : "text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/40"
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
@@ -80,17 +80,17 @@ function AdminSidebar({ active }: { active: string }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-white/8 space-y-1">
+      <div className="px-3 py-4 border-t border-[#EFE6DD] space-y-1">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/40 hover:text-white hover:bg-white/5 transition"
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/40 transition"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Dashboard
         </Link>
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/10 transition"
+          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#827970] hover:text-red-600 hover:bg-red-500/10 transition"
         >
           <span className="material-symbols-outlined text-[18px]">logout</span>
           Sign Out
@@ -100,9 +100,159 @@ function AdminSidebar({ active }: { active: string }) {
   );
 }
 
+/* ── Live AI Resource Health Estimator Card ── */
+interface AIHealthData {
+  status: string;
+  model?: string;
+  model_loaded?: boolean;
+  active_jobs?: number;
+  max_concurrent?: number;
+  max_queue_size?: number;
+  ram_total_mb?: number;
+  ram_free_mb?: number;
+  ram_used_pct?: number;
+  database_connected?: boolean;
+}
+
+function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: number; todaySelfies: number }) {
+  const [health, setHealth] = useState<AIHealthData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHealth = useCallback(() => {
+    fetch("/api/admin/ai-health")
+      .then((res) => {
+        if (!res.ok) throw new Error("Offline");
+        return res.json();
+      })
+      .then((data) => setHealth(data))
+      .catch(() => setHealth({ status: "offline" }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 10000); // refresh every 10s
+    return () => clearInterval(interval);
+  }, [fetchHealth]);
+
+  const isOnline = health && health.status === "ok";
+  const estimatedCPUSeconds = (todayPhotos * 1.5) + (todaySelfies * 0.8);
+  const totalAIJobsToday = todayPhotos + todaySelfies;
+
+  return (
+    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+      {/* Title Header */}
+      <div className="flex items-center justify-between border-b border-[#EFE6DD] pb-4 mb-4">
+        <div>
+          <h3 className="text-sm font-bold text-[#2D2D2D]">Inference & System Health</h3>
+          <p className="text-xs text-[#827970] mt-0.5">Live status and resource estimation of the local AI core</p>
+        </div>
+        <div>
+          {loading ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600 animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-stone-400" />
+              Polling AI...
+            </span>
+          ) : isOnline ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700 border border-green-200">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-ping" />
+              Engine Online
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 border border-red-200">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              Engine Offline
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Side: Real-time System RAM Indicator */}
+        <div className="flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[18px] text-[#827970]">memory</span>
+              <span className="text-xs font-bold text-[#827970] uppercase tracking-wider">Live System Memory</span>
+            </div>
+            {isOnline && health ? (
+              <div className="space-y-2 mt-2">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-[#827970]">RAM Utilization</span>
+                  <span className="text-[#2D2D2D] font-bold">{health.ram_used_pct}%</span>
+                </div>
+                <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (health.ram_used_pct ?? 0) > 85 ? "bg-red-500" : (health.ram_used_pct ?? 0) > 70 ? "bg-amber-500" : "bg-[#60D9A0]"
+                    }`}
+                    style={{ width: `${health.ram_used_pct}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-[#827970]">
+                  {(health.ram_total_mb && health.ram_free_mb)
+                    ? `${(health.ram_total_mb - health.ram_free_mb).toLocaleString()}MB / ${health.ram_total_mb.toLocaleString()}MB used`
+                    : "Fetching exact dimensions..."}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-stone-50 border border-dashed border-[#EFE6DD] p-4 text-center text-xs text-[#827970] my-2">
+                Memory metrics are currently unavailable since the AI service is offline.
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-[#EFE6DD] pt-3 mt-4">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#827970] font-medium">Inference semaphore queue</span>
+              <span className="text-[#2D2D2D] font-bold">
+                {isOnline && health ? `${health.active_jobs ?? 0} / ${health.max_queue_size ?? 10} running` : "— / 10"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Today's cumulative workloads and CPU time */}
+        <div className="border-t md:border-t-0 md:border-l border-[#EFE6DD] pt-6 md:pt-0 md:pl-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[18px] text-[#827970]">analytics</span>
+              <span className="text-xs font-bold text-[#827970] uppercase tracking-wider">Today's Workload Estimates</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-3">
+              <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
+                <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">AI Inference Jobs</p>
+                <p className="text-xl font-bold text-[#2D2D2D] mt-2">{totalAIJobsToday.toLocaleString()}</p>
+                <p className="text-[10px] text-[#827970] mt-1">
+                  {todayPhotos} photos + {todaySelfies} selfies
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
+                <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">Est. CPU Core Time</p>
+                <p className="text-xl font-bold text-[#94492c] mt-2">
+                  {estimatedCPUSeconds >= 60
+                    ? `${(estimatedCPUSeconds / 60).toFixed(1)} mins`
+                    : `${estimatedCPUSeconds.toFixed(1)}s`}
+                </p>
+                <p className="text-[10px] text-[#827970] mt-1">Raw processor capacity</p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-[#827970] italic leading-tight mt-4 pt-2 border-t border-[#EFE6DD]/80">
+            * Estimates are calculated on 1.5s per photographer photo indexing (SCRFD face detection + embeddings mapping) and 0.8s per guest selfie search match.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════
    OVERVIEW PAGE
-═══════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════ */
 export function AdminOverview() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [events, setEvents] = useState<AdminEventRow[]>([]);
@@ -114,7 +264,7 @@ export function AdminOverview() {
       .then((r) => r.json())
       .then(({ stats, events, chartData }) => {
         setStats(stats);
-        setEvents(events);
+        setEvents(events.slice(0, 5)); // show top 5 on overview page
         setChartData(chartData);
       })
       .finally(() => setLoading(false));
@@ -122,21 +272,21 @@ export function AdminOverview() {
 
   // Color palettes
   const eventTypeColors: Record<string, string> = {
-    marriage: "#F4A261", hackathon: "#5B8DEF", meetup: "#60D9A0",
+    marriage: "#D67D5C", hackathon: "#5B8DEF", meetup: "#60D9A0",
     corporate: "#A78BFA", other: "#E06C8E",
   };
   const planColors: Record<string, string> = {
-    free: "#6B7280", pro: "#F4A261", unlimited: "#60D9A0",
+    free: "#827970", pro: "#D67D5C", unlimited: "#60D9A0",
   };
   const statusColors: Record<string, string> = {
-    draft: "#6B7280", active: "#60D9A0", archived: "#A78BFA",
+    draft: "#827970", active: "#60D9A0", archived: "#A78BFA",
   };
 
   const activityIcons: Record<string, string> = {
     event: "photo_library", photographer: "photo_camera", guest: "person",
   };
   const activityAccent: Record<string, string> = {
-    event: "text-[#5B8DEF]", photographer: "text-[#F4A261]", guest: "text-[#60D9A0]",
+    event: "text-[#5B8DEF]", photographer: "text-[#D67D5C]", guest: "text-[#60D9A0]",
   };
 
   function timeAgo(ts: string) {
@@ -152,29 +302,29 @@ export function AdminOverview() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#FCF9F8]">
       <AdminSidebar active="Overview" />
       <main className="flex-1 pl-60">
         <div className="p-8 max-w-[1280px]">
           {/* Header */}
           <div className="mb-8">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-            <h1 className="mt-1 text-2xl font-bold text-white tracking-tight">Platform Overview</h1>
-            <p className="mt-1 text-sm text-white/40">Company-wide stats, growth metrics, and platform analytics.</p>
+            <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Platform Overview</h1>
+            <p className="mt-1 text-sm text-[#827970]">Platform aggregates, operational growth, and inference system diagnostics.</p>
           </div>
 
           {loading ? (
-            <div className="flex items-center gap-3 text-white/40 py-20 justify-center">
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#D67D5C]" />
-              <span className="text-sm">Loading analytics...</span>
+            <div className="flex items-center gap-3 text-[#827970] py-20 justify-center">
+              <span className="h-6 w-6 animate-spin rounded-full border-2 border-stone-200 border-t-[#D67D5C]" />
+              <span className="text-sm">Loading platform stats...</span>
             </div>
           ) : stats ? (
-            <>
-              {/* ─── STAT CARDS ROW ─── */}
+            <div className="space-y-8">
+              {/* ─── CUMULATIVE STAT CARDS ROW ─── */}
               <section>
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">All Time</h2>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">All Time</h2>
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  <StatCard label="Photographers" value={stats.totalPhotographers} icon="photo_camera" accent="text-[#F4A261]"
+                  <StatCard label="Photographers" value={stats.totalPhotographers} icon="photo_camera" accent="text-[#D67D5C]"
                     sub={stats.thisMonthGuests > 0 ? `+${stats.thisMonthGuests} this month` : undefined} />
                   <StatCard label="Total Events" value={stats.totalEvents} icon="photo_library"
                     sub={stats.thisMonthEvents > 0 ? `+${stats.thisMonthEvents} this month` : undefined} />
@@ -185,35 +335,40 @@ export function AdminOverview() {
                 </div>
               </section>
 
+              {/* ─── LIVE AI RESOURCE ESTIMATOR CARD ─── */}
+              <section>
+                <AIResourceEstimator todayPhotos={stats.todayPhotos} todaySelfies={stats.todaySelfies} />
+              </section>
+
               {/* ─── THIS MONTH QUICK STATS ─── */}
-              <section className="mt-6">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">This Month</h2>
+              <section>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">This Month</h2>
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   <StatCard label="Active Events" value={stats.activeEvents} icon="event_available" accent="text-[#60D9A0]" />
                   <StatCard label="New Events" value={stats.thisMonthEvents} icon="add_circle" />
                   <StatCard label="Photos This Month" value={stats.thisMonthPhotos} icon="photo" accent="text-[#5B8DEF]" />
-                  <StatCard label="New Guests" value={stats.thisMonthGuests} icon="person_add" accent="text-[#F4A261]" />
+                  <StatCard label="New Guests" value={stats.thisMonthGuests} icon="person_add" accent="text-[#D67D5C]" />
                 </div>
               </section>
 
               {chartData && (
                 <>
                   {/* ─── MONTHLY GROWTH CHART ─── */}
-                  <section className="mt-8">
-                    <div className="rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur-sm">
+                  <section>
+                    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
                       <div className="flex items-center justify-between mb-1">
                         <div>
-                          <h2 className="text-sm font-bold text-white">Platform Growth</h2>
-                          <p className="text-xs text-white/30 mt-0.5">Events, photos, and guests over the last 6 months</p>
+                          <h2 className="text-sm font-bold text-[#2D2D2D]">Platform Growth</h2>
+                          <p className="text-xs text-[#827970] mt-0.5">Events, photos, and guests over the last 6 months</p>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1.5 text-xs text-white/50">
+                          <span className="flex items-center gap-1.5 text-xs text-[#827970] font-medium">
                             <span className="h-2 w-2 rounded-full bg-[#D67D5C]" /> Events
                           </span>
-                          <span className="flex items-center gap-1.5 text-xs text-white/50">
+                          <span className="flex items-center gap-1.5 text-xs text-[#827970] font-medium">
                             <span className="h-2 w-2 rounded-full bg-[#5B8DEF]" /> Photos
                           </span>
-                          <span className="flex items-center gap-1.5 text-xs text-white/50">
+                          <span className="flex items-center gap-1.5 text-xs text-[#827970] font-medium">
                             <span className="h-2 w-2 rounded-full bg-[#60D9A0]" /> Guests
                           </span>
                         </div>
@@ -223,44 +378,44 @@ export function AdminOverview() {
                   </section>
 
                   {/* ─── DONUT CHARTS ROW ─── */}
-                  <section className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+                  <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
                     {/* Event Types */}
-                    <div className="rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur-sm">
-                      <h2 className="text-sm font-bold text-white mb-4">Event Types</h2>
+                    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                      <h2 className="text-sm font-bold text-[#2D2D2D] mb-4">Event Types</h2>
                       <DonutChart
                         title="Events"
                         data={chartData.eventTypeBreakdown.map((d) => ({
                           label: d.type.charAt(0).toUpperCase() + d.type.slice(1),
                           value: d.count,
-                          color: eventTypeColors[d.type] ?? "#6B7280",
+                          color: eventTypeColors[d.type] ?? "#827970",
                         }))}
                         size={160}
                       />
                     </div>
 
                     {/* Plan Distribution */}
-                    <div className="rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur-sm">
-                      <h2 className="text-sm font-bold text-white mb-4">Subscription Plans</h2>
+                    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                      <h2 className="text-sm font-bold text-[#2D2D2D] mb-4">Subscription Plans</h2>
                       <DonutChart
                         title="Users"
                         data={chartData.planDistribution.map((d) => ({
                           label: d.plan === "free" ? "Starter" : d.plan === "pro" ? "Pro" : "Unlimited",
                           value: d.count,
-                          color: planColors[d.plan] ?? "#6B7280",
+                          color: planColors[d.plan] ?? "#827970",
                         }))}
                         size={160}
                       />
                     </div>
 
                     {/* Event Status */}
-                    <div className="rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur-sm">
-                      <h2 className="text-sm font-bold text-white mb-4">Event Status</h2>
+                    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                      <h2 className="text-sm font-bold text-[#2D2D2D] mb-4">Event Status</h2>
                       <DonutChart
                         title="Events"
                         data={chartData.eventStatusBreakdown.map((d) => ({
                           label: d.status.charAt(0).toUpperCase() + d.status.slice(1),
                           value: d.count,
-                          color: statusColors[d.status] ?? "#6B7280",
+                          color: statusColors[d.status] ?? "#827970",
                         }))}
                         size={160}
                       />
@@ -268,10 +423,10 @@ export function AdminOverview() {
                   </section>
 
                   {/* ─── TOP PHOTOGRAPHERS + ACTIVITY FEED ─── */}
-                  <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     {/* Top Photographers */}
-                    <div className="rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur-sm">
-                      <h2 className="text-sm font-bold text-white mb-4">Top Photographers</h2>
+                    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                      <h2 className="text-sm font-bold text-[#2D2D2D] mb-4">Top Photographers</h2>
                       {chartData.topPhotographers.length > 0 ? (
                         <HorizontalBarChart
                           data={chartData.topPhotographers.map((p) => ({
@@ -281,34 +436,34 @@ export function AdminOverview() {
                           }))}
                         />
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-white/20">
+                        <div className="flex flex-col items-center justify-center py-10 text-stone-300">
                           <span className="material-symbols-outlined text-[32px] mb-2">photo_camera</span>
-                          <p className="text-sm">No photographers yet</p>
+                          <p className="text-sm text-[#827970]">No photographers yet</p>
                         </div>
                       )}
                     </div>
 
                     {/* Activity Feed */}
-                    <div className="rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur-sm">
-                      <h2 className="text-sm font-bold text-white mb-4">Recent Activity</h2>
+                    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                      <h2 className="text-sm font-bold text-[#2D2D2D] mb-4">Recent Activity</h2>
                       {chartData.recentActivity.length > 0 ? (
                         <div className="space-y-1">
                           {chartData.recentActivity.map((a, i) => (
-                            <div key={i} className="flex items-start gap-3 rounded-xl px-3 py-2.5 hover:bg-white/[0.03] transition">
-                              <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 flex-shrink-0 ${activityAccent[a.type] ?? "text-white/40"}`}>
+                            <div key={i} className="flex items-start gap-3 rounded-xl px-3 py-2.5 hover:bg-stone-50 transition">
+                              <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 flex-shrink-0 ${activityAccent[a.type] ?? "text-stone-400"}`}>
                                 <span className="material-symbols-outlined text-[16px]">{activityIcons[a.type] ?? "info"}</span>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-white/70 truncate">{a.description}</p>
-                                <p className="text-xs text-white/25 mt-0.5">{timeAgo(a.time)}</p>
+                                <p className="text-sm text-[#2D2D2D]/90 font-medium truncate">{a.description}</p>
+                                <p className="text-xs text-[#827970] mt-0.5">{timeAgo(a.time)}</p>
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-white/20">
+                        <div className="flex flex-col items-center justify-center py-10 text-stone-300">
                           <span className="material-symbols-outlined text-[32px] mb-2">history</span>
-                          <p className="text-sm">No recent activity</p>
+                          <p className="text-sm text-[#827970]">No recent activity</p>
                         </div>
                       )}
                     </div>
@@ -317,45 +472,45 @@ export function AdminOverview() {
               )}
 
               {/* ─── RECENT EVENTS TABLE ─── */}
-              <section className="mt-8">
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Recent Events</h2>
-                <div className="rounded-2xl border border-white/8 bg-white/5 overflow-hidden">
+              <section>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Recent Events</h2>
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-white/8">
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Event</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photographer</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Type</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photos</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Guests</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Status</th>
+                      <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Type</th>
+                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
+                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-[#EFE6DD]">
                       {events.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-5 py-8 text-center text-white/30 text-sm">No events yet.</td>
+                          <td colSpan={6} className="px-5 py-8 text-center text-[#827970] text-sm">No events yet.</td>
                         </tr>
                       )}
                       {events.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-white/[0.03] transition">
+                        <tr key={ev.id} className="hover:bg-stone-50/50 transition">
                           <td className="px-5 py-3.5">
-                            <p className="font-medium text-white">{ev.name}</p>
-                            <p className="text-xs text-white/30">{ev.venue ?? "—"}</p>
+                            <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
+                            <p className="text-xs text-[#827970]">{ev.venue ?? "—"}</p>
                           </td>
-                          <td className="px-5 py-3.5 text-white/60">{ev.ownerName ?? "—"}</td>
+                          <td className="px-5 py-3.5 text-[#2D2D2D] font-medium">{ev.ownerName ?? "—"}</td>
                           <td className="px-5 py-3.5">
-                            <span className="capitalize text-white/50">{ev.event_type}</span>
+                            <span className="capitalize text-[#827970] font-medium">{ev.event_type}</span>
                           </td>
-                          <td className="px-5 py-3.5 text-right text-white/70">{ev.photoCount}</td>
-                          <td className="px-5 py-3.5 text-right text-white/70">{ev.guestCount}</td>
+                          <td className="px-5 py-3.5 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
+                          <td className="px-5 py-3.5 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
                           <td className="px-5 py-3.5">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                               ev.status === "active"
-                                ? "bg-[#60D9A0]/15 text-[#60D9A0]"
+                                ? "bg-[#60D9A0]/15 text-[#2E7D32]"
                                 : ev.status === "draft"
-                                ? "bg-white/10 text-white/50"
-                                : "bg-white/5 text-white/30"
+                                ? "bg-stone-100 text-stone-600"
+                                : "bg-stone-50 text-stone-400"
                             }`}>
                               {ev.status}
                             </span>
@@ -366,7 +521,7 @@ export function AdminOverview() {
                   </table>
                 </div>
               </section>
-            </>
+            </div>
           ) : null}
         </div>
       </main>
@@ -376,7 +531,7 @@ export function AdminOverview() {
 
 /* ══════════════════════════════════════════════
    PHOTOGRAPHERS PAGE
-═══════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════ */
 function PhotographerModal({
   onClose,
   onSave,
@@ -436,19 +591,19 @@ function PhotographerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#18181B] p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-white">{isEdit ? "Edit Photographer" : "Add Photographer"}</h2>
-        <p className="mt-1 text-sm text-white/40">{isEdit ? "Update their profile details." : "Create a new photographer account."}</p>
+      <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-[#2D2D2D]">{isEdit ? "Edit Photographer" : "Add Photographer"}</h2>
+        <p className="mt-1 text-sm text-[#827970]">{isEdit ? "Update their profile details." : "Create a new photographer account."}</p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Full Name</label>
+            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Full Name</label>
             <input
               required
               value={form.full_name}
               onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60"
+              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
               placeholder="Jane Doe"
             />
           </div>
@@ -456,24 +611,24 @@ function PhotographerModal({
           {!isEdit && (
             <>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Email</label>
+                <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Email</label>
                 <input
                   required
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60"
+                  className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
                   placeholder="photographer@email.com"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Password</label>
+                <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Password</label>
                 <input
                   required
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60"
+                  className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
                   placeholder="Minimum 8 characters"
                 />
               </div>
@@ -481,53 +636,53 @@ function PhotographerModal({
           )}
 
           <div>
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Phone <span className="text-white/20">(optional)</span></label>
+            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Phone <span className="text-stone-400">(optional)</span></label>
             <input
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60"
+              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
               placeholder="+91 98765 43210"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Subscription Plan</label>
+            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Subscription Plan</label>
             <select
               value={form.plan}
               onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value as "free" | "pro" | "unlimited" }))}
-              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#D67D5C]/60"
+              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] bg-white"
             >
-              <option value="free" className="bg-[#18181B]">Starter (Free - 1 Event, 10GB)</option>
-              <option value="pro" className="bg-[#18181B]">Pro (₹1,699/mo - 5 Events, 100GB)</option>
-              <option value="unlimited" className="bg-[#18181B]">Unlimited (₹4,199/mo - Unlimited, 1TB)</option>
+              <option value="free">Starter (Free - 1 Event, 10GB)</option>
+              <option value="pro">Pro (₹1,699/mo - 5 Events, 100GB)</option>
+              <option value="unlimited">Unlimited (₹4,199/mo - Unlimited, 1TB)</option>
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Bio <span className="text-white/20">(optional)</span></label>
+            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Bio <span className="text-stone-400">(optional)</span></label>
             <textarea
               rows={2}
               value={form.bio}
               onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
-              className="mt-1.5 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#D67D5C]/60 resize-none"
+              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] resize-none"
               placeholder="Short bio or specialization..."
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-red-600 font-semibold">{error}</p>}
 
           <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/60 hover:bg-white/5 transition"
+              className="flex-1 rounded-xl border border-[#EFE6DD] px-4 py-2.5 text-sm font-semibold text-stone-600 hover:bg-stone-50 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-4 py-2.5 text-sm font-semibold text-white shadow hover:opacity-90 transition disabled:opacity-50"
+              className="flex-1 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/10 hover:opacity-90 transition disabled:opacity-50"
             >
               {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Account"}
             </button>
@@ -567,7 +722,7 @@ export function AdminPhotographers() {
   const handleAdd = () => { setEditTarget(null); setModalOpen(true); };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#FCF9F8]">
       <AdminSidebar active="Photographers" />
       <main className="flex-1 pl-60">
         <div className="p-8 max-w-6xl">
@@ -575,12 +730,12 @@ export function AdminPhotographers() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-              <h1 className="mt-1 text-2xl font-bold text-white tracking-tight">Photographers</h1>
-              <p className="mt-1 text-sm text-white/40">Manage photographer accounts on the platform.</p>
+              <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Photographers</h1>
+              <p className="mt-1 text-sm text-[#827970]">Manage photographer accounts on the platform.</p>
             </div>
             <button
               onClick={handleAdd}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 transition"
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 transition"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               Add Photographer
@@ -588,64 +743,64 @@ export function AdminPhotographers() {
           </div>
 
           {loading ? (
-            <div className="flex items-center gap-3 text-white/40">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[#D67D5C]" />
+            <div className="flex items-center gap-3 text-[#827970]">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-[#D67D5C]" />
               Loading...
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/8 bg-white/5 overflow-hidden">
+            <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/8">
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photographer</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Contact</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Events</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photos</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Plan</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Last Active</th>
+                  <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
+                    <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Events</th>
+                    <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Plan</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Last Active</th>
                     <th className="px-5 py-3.5" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[#EFE6DD]">
                   {photographers.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-5 py-12 text-center">
-                        <span className="material-symbols-outlined text-[40px] text-white/20 block mb-2">photo_camera</span>
-                        <p className="text-white/40 text-sm">No photographers yet. Add one to get started.</p>
+                        <span className="material-symbols-outlined text-[40px] text-stone-300 block mb-2">photo_camera</span>
+                        <p className="text-[#827970] text-sm">No photographers yet. Add one to get started.</p>
                       </td>
                     </tr>
                   )}
                   {photographers.map((p) => (
-                    <tr key={p.id} className="hover:bg-white/[0.03] transition">
+                    <tr key={p.id} className="hover:bg-stone-50/50 transition">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#D67D5C]/30 to-[#F4A261]/20 text-[#F4A261] text-sm font-bold flex-shrink-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#D67D5C]/30 to-[#B36144]/20 text-[#94492c] text-sm font-bold flex-shrink-0">
                             {(p.full_name ?? "?")[0].toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-semibold text-white">{p.full_name ?? "—"}</p>
-                            {p.bio && <p className="text-xs text-white/30 truncate max-w-[180px]">{p.bio}</p>}
+                            <p className="font-semibold text-[#2D2D2D]">{p.full_name ?? "—"}</p>
+                            {p.bio && <p className="text-xs text-[#827970] truncate max-w-[180px]">{p.bio}</p>}
                           </div>
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <p className="text-white/70 text-sm">{p.email}</p>
-                        {p.phone && <p className="text-xs text-white/30">{p.phone}</p>}
+                        <p className="text-[#2D2D2D] text-sm font-medium">{p.email}</p>
+                        {p.phone && <p className="text-xs text-[#827970]">{p.phone}</p>}
                       </td>
-                      <td className="px-5 py-4 text-right text-white/70 font-medium">{p.eventCount}</td>
-                      <td className="px-5 py-4 text-right text-white/70 font-medium">{p.photoCount}</td>
+                      <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.eventCount}</td>
+                      <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.photoCount}</td>
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           p.plan === "unlimited"
-                            ? "bg-green-500/15 text-green-400 border border-green-500/10"
+                            ? "bg-green-50 text-green-700 border border-green-200"
                             : p.plan === "pro"
-                            ? "bg-[#D67D5C]/15 text-[#F4A261] border border-[#D67D5C]/10"
-                            : "bg-white/10 text-white/50 border border-white/5"
+                            ? "bg-[#D67D5C]/10 text-[#94492c] border border-[#D67D5C]/20"
+                            : "bg-stone-100 text-stone-600 border border-stone-200"
                         }`}>
                           {p.plan === "free" ? "Starter" : p.plan === "pro" ? "Pro" : "Unlimited"}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-white/40 text-xs">
+                      <td className="px-5 py-4 text-[#827970] text-xs">
                         {p.lastActive
                           ? new Date(p.lastActive).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
                           : "Never"}
@@ -654,7 +809,7 @@ export function AdminPhotographers() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleEdit(p)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/50 transition"
                             title="Edit"
                           >
                             <span className="material-symbols-outlined text-[16px]">edit</span>
@@ -662,11 +817,11 @@ export function AdminPhotographers() {
                           <button
                             onClick={() => handleDelete(p.id)}
                             disabled={deleting === p.id}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/50 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-40"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-red-600 hover:bg-red-50 transition disabled:opacity-40"
                             title="Delete"
                           >
                             {deleting === p.id
-                              ? <span className="h-3.5 w-3.5 animate-spin rounded-full border border-white/30 border-t-white" />
+                              ? <span className="h-3.5 w-3.5 animate-spin rounded-full border border-stone-300 border-t-[#D67D5C]" />
                               : <span className="material-symbols-outlined text-[16px]">delete</span>
                             }
                           </button>
@@ -694,10 +849,19 @@ export function AdminPhotographers() {
 
 /* ══════════════════════════════════════════════
    EVENTS PAGE
-═══════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════ */
 export function AdminEvents() {
   const [events, setEvents] = useState<AdminEventRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
+
+  // Date Filtering state
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
+
+  // Month navigation state
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -706,73 +870,273 @@ export function AdminEvents() {
       .finally(() => setLoading(false));
   }, []);
 
+  const getEventDateString = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    } catch {
+      return "";
+    }
+  };
+
+  // Group events by local date string
+  const eventsByDate = useMemo(() => {
+    const map: Record<string, AdminEventRow[]> = {};
+    events.forEach((ev) => {
+      const dateStr = getEventDateString(ev.event_date);
+      if (dateStr) {
+        if (!map[dateStr]) map[dateStr] = [];
+        map[dateStr].push(ev);
+      }
+    });
+    return map;
+  }, [events]);
+
+  // Calendar calculations
+  const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
+  const getFirstDayOfMonth = (y: number, m: number) => {
+    const day = new Date(y, m, 1).getDay(); // 0 is Sun
+    return day === 0 ? 6 : day - 1; // Map to 0=Mon, 6=Sun
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
+  };
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const calendarDays = useMemo(() => {
+    const totalDays = getDaysInMonth(year, month);
+    const firstDayIndex = getFirstDayOfMonth(year, month);
+    const arr: (number | null)[] = [];
+
+    for (let i = 0; i < firstDayIndex; i++) {
+      arr.push(null);
+    }
+    for (let d = 1; d <= totalDays; d++) {
+      arr.push(d);
+    }
+    return arr;
+  }, [year, month]);
+
+  // Filter events by date if selected
+  const filteredEvents = useMemo(() => {
+    if (!selectedDateStr) return events;
+    return events.filter((ev) => getEventDateString(ev.event_date) === selectedDateStr);
+  }, [events, selectedDateStr]);
+
+  const selectedFormattedDate = useMemo(() => {
+    if (!selectedDateStr) return "";
+    const parts = selectedDateStr.split("-");
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  }, [selectedDateStr]);
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#FCF9F8]">
       <AdminSidebar active="Events" />
       <main className="flex-1 pl-60">
         <div className="p-8 max-w-6xl">
-          <div className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-            <h1 className="mt-1 text-2xl font-bold text-white tracking-tight">All Events</h1>
-            <p className="mt-1 text-sm text-white/40">Every event across the platform, newest first.</p>
+          {/* Top Panel Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+              <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Platform Events</h1>
+              <p className="mt-1 text-sm text-[#827970]">Browse events using a standard list or daily event density calendar.</p>
+            </div>
+
+            {/* Toggle Table/Calendar View */}
+            <div className="flex items-center gap-2 bg-stone-100 rounded-xl p-1 self-start md:self-auto border border-[#EFE6DD]">
+              <button
+                onClick={() => { setViewMode("calendar"); setSelectedDateStr(null); }}
+                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === "calendar"
+                    ? "bg-white text-[#94492c] shadow-[0_2px_8px_rgba(148,73,44,0.08)]"
+                    : "text-[#827970] hover:text-[#2D2D2D]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                Calendar View
+              </button>
+              <button
+                onClick={() => { setViewMode("list"); setSelectedDateStr(null); }}
+                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  viewMode === "list"
+                    ? "bg-white text-[#94492c] shadow-[0_2px_8px_rgba(148,73,44,0.08)]"
+                    : "text-[#827970] hover:text-[#2D2D2D]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">view_list</span>
+                List View
+              </button>
+            </div>
           </div>
 
           {loading ? (
-            <div className="flex items-center gap-3 text-white/40">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[#D67D5C]" />
+            <div className="flex items-center gap-3 text-[#827970]">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-[#D67D5C]" />
               Loading...
             </div>
           ) : (
-            <div className="rounded-2xl border border-white/8 bg-white/5 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/8">
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Event</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photographer</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Date</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Photos</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Guests</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {events.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center text-white/30 text-sm">No events found.</td>
-                    </tr>
-                  )}
-                  {events.map((ev) => (
-                    <tr key={ev.id} className="hover:bg-white/[0.03] transition">
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-white">{ev.name}</p>
-                        <p className="text-xs text-white/30 capitalize">{ev.event_type} {ev.venue ? `· ${ev.venue}` : ""}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-white/70">{ev.ownerName ?? "—"}</p>
-                        <p className="text-xs text-white/30">{ev.ownerEmail ?? ""}</p>
-                      </td>
-                      <td className="px-5 py-4 text-white/50 text-xs">
-                        {ev.event_date
-                          ? new Date(ev.event_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                          : "—"}
-                      </td>
-                      <td className="px-5 py-4 text-right text-white/70 font-medium">{ev.photoCount}</td>
-                      <td className="px-5 py-4 text-right text-white/70 font-medium">{ev.guestCount}</td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          ev.status === "active"
-                            ? "bg-[#60D9A0]/15 text-[#60D9A0]"
-                            : ev.status === "draft"
-                            ? "bg-white/10 text-white/50"
-                            : "bg-white/5 text-white/30"
-                        }`}>
-                          {ev.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-6">
+              {/* ─── CALENDAR CONTAINER VIEW ─── */}
+              {viewMode === "calendar" && (
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)] animate-page-enter">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-base font-bold text-[#2D2D2D]">{monthNames[month]} {year}</h2>
+                      <p className="text-xs text-[#827970] mt-0.5">Click any day to filter events listed below</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handlePrevMonth}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-stone-50 border border-[#EFE6DD] text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-100 transition"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                      </button>
+                      <button
+                        onClick={handleNextMonth}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-stone-50 border border-[#EFE6DD] text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-100 transition"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar Weekday Names */}
+                  <div className="grid grid-cols-7 text-center text-xs font-bold text-[#827970] uppercase border-b border-[#EFE6DD]/80 pb-2 mb-3">
+                    <div>Mon</div>
+                    <div>Tue</div>
+                    <div>Wed</div>
+                    <div>Thu</div>
+                    <div>Fri</div>
+                    <div>Sat</div>
+                    <div>Sun</div>
+                  </div>
+
+                  {/* Calendar Day Grid cells */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {calendarDays.map((d, index) => {
+                      if (d === null) return <div key={`empty-${index}`} className="h-20 bg-stone-50/30 rounded-xl border border-transparent" />;
+
+                      const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                      const dayEvents = eventsByDate[dayStr] || [];
+                      const isSelected = selectedDateStr === dayStr;
+
+                      return (
+                        <div
+                          key={`day-${d}`}
+                          onClick={() => {
+                            if (dayEvents.length > 0) {
+                              setSelectedDateStr(isSelected ? null : dayStr);
+                            }
+                          }}
+                          className={`h-20 rounded-xl border p-2 flex flex-col justify-between transition-all duration-200 select-none ${
+                            dayEvents.length > 0
+                              ? "cursor-pointer hover:bg-[#D67D5C]/5"
+                              : "opacity-60"
+                          } ${
+                            isSelected
+                              ? "border-[#D67D5C] ring-2 ring-[#D67D5C]/20 bg-[#D67D5C]/5"
+                              : "border-stone-100 bg-white"
+                          }`}
+                        >
+                          <span className={`text-xs font-bold ${isSelected ? "text-[#94492c]" : "text-[#2D2D2D]"}`}>
+                            {d}
+                          </span>
+                          {dayEvents.length > 0 && (
+                            <span className="inline-flex self-start items-center rounded-full bg-[#D67D5C]/10 px-2 py-0.5 text-[10px] font-bold text-[#94492c]">
+                              {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── EVENTS DATA TABLE ─── */}
+              <div className="space-y-4">
+                {/* Active Filters Bar */}
+                {selectedDateStr && (
+                  <div className="flex items-center justify-between bg-[#D67D5C]/10 border border-[#D67D5C]/25 rounded-2xl px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-[#94492c]">filter_alt</span>
+                      <p className="text-xs text-[#94492c] font-semibold">
+                        Showing {filteredEvents.length} events occurring on <span className="underline font-bold">{selectedFormattedDate}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedDateStr(null)}
+                      className="flex items-center gap-1 text-xs font-bold text-[#94492c] bg-white border border-[#D67D5C]/30 px-3 py-1 rounded-xl shadow-sm hover:bg-[#D67D5C]/5 transition"
+                    >
+                      Clear Filter
+                    </button>
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Date</th>
+                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
+                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
+                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EFE6DD]">
+                      {filteredEvents.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-5 py-12 text-center text-[#827970] text-sm font-semibold">
+                            No events found for this selection.
+                          </td>
+                        </tr>
+                      )}
+                      {filteredEvents.map((ev) => (
+                        <tr key={ev.id} className="hover:bg-stone-50/50 transition">
+                          <td className="px-5 py-4">
+                            <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
+                            <p className="text-xs text-[#827970] capitalize font-medium">{ev.event_type} {ev.venue ? `· ${ev.venue}` : ""}</p>
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="text-[#2D2D2D] font-semibold">{ev.ownerName ?? "—"}</p>
+                            <p className="text-xs text-[#827970]">{ev.ownerEmail ?? ""}</p>
+                          </td>
+                          <td className="px-5 py-4 text-[#827970] text-xs font-medium">
+                            {ev.event_date
+                              ? new Date(ev.event_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                              : "—"}
+                          </td>
+                          <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
+                          <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              ev.status === "active"
+                                ? "bg-[#60D9A0]/15 text-[#2E7D32]"
+                                : ev.status === "draft"
+                                ? "bg-stone-100 text-stone-600"
+                                : "bg-stone-50 text-stone-400"
+                            }`}>
+                              {ev.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
