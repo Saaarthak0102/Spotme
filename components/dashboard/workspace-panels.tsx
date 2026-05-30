@@ -508,6 +508,29 @@ export function GalleryPanel({ photos }: { photos: EventPhoto[] }) {
    ═══════════════════════════════════════════════════ */
 export function SettingsPanel({ event }: { event: EventRecord }) {
   const router = useRouter();
+  const [privacyMode, setPrivacyMode] = useState(
+    (event as EventRecord & { privacy_mode?: boolean }).privacy_mode ?? false
+  );
+  const [privacyLoading, setPrivacyLoading] = useState(false);
+
+  const handleTogglePrivacy = async () => {
+    const newMode = !privacyMode;
+    setPrivacyLoading(true);
+    setPrivacyMode(newMode); // optimistic update
+    const supabase = createClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from("events")
+      .update({ privacy_mode: newMode })
+      .eq("id", event.id);
+    setPrivacyLoading(false);
+    if (error) {
+      setPrivacyMode(!newMode); // revert on failure
+      alert("Failed to update Privacy Mode. Please try again.");
+    } else {
+      router.refresh();
+    }
+  };
 
   const handleArchive = async () => {
     if (!confirm("Archive this event? Guests will no longer be able to access it.")) return;
@@ -527,22 +550,98 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_330px] sm:gap-5">
-      <section className="overflow-hidden rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 backdrop-blur-xl">
-        {settings.map((setting) => (
-          <div className="flex flex-col gap-3 border-b border-[#2D2D2D]/6 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:p-6" key={setting.title}>
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]">
-                <span className="material-symbols-outlined text-[18px]">{setting.icon}</span>
+      <div className="flex flex-col gap-4 sm:gap-5">
+        {/* ── Privacy Mode — featured toggle ───────────── */}
+        <section className={`overflow-hidden rounded-[26px] border transition-all duration-500 ${
+          privacyMode
+            ? "border-violet-200 bg-gradient-to-br from-violet-50/80 to-purple-50/60 shadow-[0_8px_30px_rgba(139,92,246,0.08)]"
+            : "border-[#2D2D2D]/6 bg-white/60"
+        } backdrop-blur-xl p-5 sm:p-6`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${
+                privacyMode
+                  ? "bg-violet-100 text-violet-600"
+                  : "bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]"
+              }`}>
+                <span className="material-symbols-outlined text-[20px]">
+                  {privacyMode ? "lock" : "lock_open"}
+                </span>
               </span>
               <div>
-                <h2 className="text-sm font-semibold">{setting.title}</h2>
-                <p className="mt-1 text-xs leading-5 text-[#827970]">{setting.description}</p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold">Privacy Mode</h2>
+                  {privacyMode && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-[#827970]">
+                  {privacyMode
+                    ? "Guests are redirected directly to Find Me. No one can browse the general gallery — photos are only revealed after selfie matching."
+                    : "When enabled, guests skip the gallery entirely. They must upload a selfie to see only the photos they appear in, protecting everyone's privacy."}
+                </p>
+                {privacyMode && (
+                  <div className="mt-3 space-y-1.5">
+                    {[
+                      "Gallery page hidden — redirect to Find Me",
+                      "Photos only visible via AI face match",
+                      "No face detected = no photos shown",
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-1.5 text-[11px] text-violet-700">
+                        <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <button className="w-fit shrink-0 rounded-xl border border-[#DED5CC] px-4 py-2.5 text-xs font-semibold text-[#625D58] transition hover:bg-[#FDF8F1]">{setting.action}</button>
+
+            {/* Toggle switch */}
+            <button
+              onClick={handleTogglePrivacy}
+              disabled={privacyLoading}
+              aria-label="Toggle Privacy Mode"
+              className={`relative mt-0.5 h-7 w-13 shrink-0 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:opacity-60 ${
+                privacyMode ? "bg-violet-500" : "bg-[#DED5CC]"
+              }`}
+              style={{ minWidth: "52px" }}
+            >
+              <span
+                className={`absolute top-[3px] left-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-md transition-transform duration-300 ${
+                  privacyMode ? "translate-x-[25px]" : "translate-x-0"
+                }`}
+              />
+              {privacyLoading && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                </span>
+              )}
+            </button>
           </div>
-        ))}
-      </section>
+        </section>
+
+        {/* ── Other settings ───────────────────────────── */}
+        <section className="overflow-hidden rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 backdrop-blur-xl">
+          {settings.map((setting) => (
+            <div className="flex flex-col gap-3 border-b border-[#2D2D2D]/6 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:p-6" key={setting.title}>
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]">
+                  <span className="material-symbols-outlined text-[18px]">{setting.icon}</span>
+                </span>
+                <div>
+                  <h2 className="text-sm font-semibold">{setting.title}</h2>
+                  <p className="mt-1 text-xs leading-5 text-[#827970]">{setting.description}</p>
+                </div>
+              </div>
+              <button className="w-fit shrink-0 rounded-xl border border-[#DED5CC] px-4 py-2.5 text-xs font-semibold text-[#625D58] transition hover:bg-[#FDF8F1]">{setting.action}</button>
+            </div>
+          ))}
+        </section>
+      </div>
 
       {/* Danger zone */}
       <section className="h-fit rounded-[26px] border border-[#D67D5C]/18 bg-gradient-to-br from-[#FFF5F0] to-[#FFF9F5] p-5 sm:p-6">

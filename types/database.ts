@@ -41,6 +41,7 @@ export interface Event {
   admin_phone: string | null;
   admin_email: string | null;
   qr_active: boolean;
+  privacy_mode: boolean;
   status: "draft" | "active" | "archived";
   created_at: string;
   updated_at: string;

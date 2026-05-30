@@ -33,10 +33,25 @@ export async function getGuestEvent(eventId: string): Promise<Event | null> {
 
 /**
  * Fetch all photos for a public event gallery.
+ * Returns an empty array if the event has privacy_mode enabled —
+ * guests must upload a selfie and go through AI matching to see any photos.
  * Server-safe: use this in Server Components.
  */
 export async function fetchGuestGallery(eventId: string): Promise<EventPhoto[]> {
   const supabase = await createServerClient();
+
+  // Check privacy_mode first (cheap, single-row read)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: eventData } = await (supabase as any)
+    .from("events")
+    .select("privacy_mode")
+    .eq("id", eventId)
+    .single();
+
+  if (eventData?.privacy_mode === true) {
+    // Privacy Mode is ON — never leak general gallery photos server-side
+    return [];
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)

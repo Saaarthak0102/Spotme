@@ -8,6 +8,7 @@ import {
   fetchMyPhotos,
   getGuestSelfieStatus,
   fetchGuestGalleryClient,
+  getEventPrivacyMode,
 } from "@/lib/guest-data-client";
 import type { EventPhoto } from "@/types/database";
 
@@ -27,6 +28,7 @@ export default function MyPhotosPage() {
   // Guest & AI state
   const [loading, setLoading] = useState(true);
   const [hasGuestRecord, setHasGuestRecord] = useState(true);
+  const [privacyMode, setPrivacyMode] = useState(false);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [selfieId, setSelfieId] = useState<string | null>(null);
   const [matchStatus, setMatchStatus] = useState<string | null>(null); // 'processing' | 'matched' | 'no_face' | null
@@ -50,19 +52,24 @@ export default function MyPhotosPage() {
       setLoading(true);
       const storedGuestId = localStorage.getItem(`guest_id_${eventId}`);
 
+      // Check privacy mode first — affects all fallback behaviour
+      const isPrivate = await getEventPrivacyMode(eventId);
+      setPrivacyMode(isPrivate);
+
       if (!storedGuestId) {
-        // No guest record — show unfiltered gallery as fallback
         setHasGuestRecord(false);
-        const { photos: allPhotos, nextCursor: cursor } =
-          await fetchGuestGalleryClient(eventId);
-        setPhotos(allPhotos);
-        setNextCursor(cursor);
+        if (!isPrivate) {
+          // Only load general gallery if NOT in privacy mode
+          const { photos: allPhotos, nextCursor: cursor } =
+            await fetchGuestGalleryClient(eventId);
+          setPhotos(allPhotos);
+          setNextCursor(cursor);
+        }
         return;
       }
 
       setHasGuestRecord(true);
 
-      // Check selfie status and cached match count (pure DB read — sub-100ms)
       const { selfieId: sid, selfieUrl: sUrl, status, matchCount } =
         await getGuestSelfieStatus(storedGuestId, eventId);
 
@@ -71,31 +78,35 @@ export default function MyPhotosPage() {
       setMatchStatus(status);
 
       if (!sUrl) {
-        // No selfie yet — show unfiltered gallery
-        const { photos: allPhotos, nextCursor: cursor } =
-          await fetchGuestGalleryClient(eventId);
-        setPhotos(allPhotos);
-        setNextCursor(cursor);
+        // No selfie yet
+        if (!isPrivate) {
+          // Show general gallery only when privacy mode is off
+          const { photos: allPhotos, nextCursor: cursor } =
+            await fetchGuestGalleryClient(eventId);
+          setPhotos(allPhotos);
+          setNextCursor(cursor);
+        }
+        // In privacy mode: show empty with CTA to upload selfie
         return;
       }
 
       if (status === "matched" || (matchCount > 0 && status !== "uploaded" && status !== "processing")) {
-        // Cache hit — load from photo_matches instantly
         const matched = await fetchMyPhotos(storedGuestId, eventId);
         setPhotos(matched);
         setAiMatched(true);
         setMatchStatus("matched");
       } else if (status === "processing") {
-        // AI is still running — poll every 3 seconds
         schedulePoll(storedGuestId);
       } else if (status === "no_face") {
-        // No face detected, fall back to all photos
-        const { photos: allPhotos, nextCursor: cursor } =
-          await fetchGuestGalleryClient(eventId);
-        setPhotos(allPhotos);
-        setNextCursor(cursor);
+        // Privacy mode: never fall back to all photos — show re-upload prompt
+        if (!isPrivate) {
+          const { photos: allPhotos, nextCursor: cursor } =
+            await fetchGuestGalleryClient(eventId);
+          setPhotos(allPhotos);
+          setNextCursor(cursor);
+        }
       } else {
-        // Unknown or 'uploaded' status — trigger embed-selfie and poll
+        // 'uploaded' — trigger AI and poll
         if (sid && sUrl) {
           triggerEmbedSelfie(storedGuestId, sUrl, sid);
           schedulePoll(storedGuestId);
@@ -398,7 +409,7 @@ export default function MyPhotosPage() {
       </div>
 
       {/* ── Browse All Link ────────────────── */}
-      {aiMatched && (
+      {aiMatched && !privacyMode && (
         <div className="mt-12 text-center">
           <Link
             href={`/event/${eventId}/gallery`}

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getGuestEvent, fetchGuestGallery } from "@/lib/guest-data-server";
+import type { Event } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +11,27 @@ export default async function EventLandingPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  const [event, photos] = await Promise.all([
-    getGuestEvent(eventId),
-    fetchGuestGallery(eventId),
-  ]);
+  const event = await getGuestEvent(eventId);
 
   if (!event) notFound();
+
+  const privacyMode = (event as Event & { privacy_mode?: boolean }).privacy_mode ?? false;
+
+  // Only fetch photo count when not in privacy mode (no point revealing it)
+  const photos = privacyMode ? [] : await fetchGuestGallery(eventId);
+
+  // Steps change depending on privacy mode
+  const steps = privacyMode
+    ? [
+        { step: "1", text: "Enter your WhatsApp number", icon: "forum" },
+        { step: "2", text: "Upload a selfie", icon: "add_a_photo" },
+        { step: "3", text: "AI finds only YOUR photos — privately", icon: "face_retouching_natural" },
+      ]
+    : [
+        { step: "1", text: "Enter your WhatsApp number", icon: "forum" },
+        { step: "2", text: "Browse all event photos", icon: "photo_library" },
+        { step: "3", text: "Upload a selfie to find your photos", icon: "face" },
+      ];
 
   return (
     <div className="min-h-[calc(100vh-56px)]">
@@ -61,25 +77,33 @@ export default async function EventLandingPage({
       {/* ── Action Card ────────────────────────────── */}
       <div className="relative -mt-8 px-5 sm:px-8">
         <div className="mx-auto max-w-lg rounded-[28px] border border-[#2D2D2D]/6 bg-white/80 p-6 shadow-[0_20px_60px_rgba(45,45,45,0.08)] backdrop-blur-2xl sm:p-8">
-          {/* Photo count badge */}
-          {photos.length > 0 && (
+
+          {/* Privacy Mode badge OR photo count badge */}
+          {privacyMode ? (
+            <div className="mb-6 flex items-center gap-2 rounded-2xl bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/60 px-4 py-3">
+              <span className="material-symbols-outlined text-[18px] text-violet-500">lock</span>
+              <p className="text-sm text-violet-800">
+                <span className="font-semibold">Privacy Mode is on.</span> Your photos are shared only with you.
+              </p>
+            </div>
+          ) : photos.length > 0 ? (
             <div className="mb-6 flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FDF8F1] to-[#FFF3EB] px-4 py-3">
               <span className="material-symbols-outlined text-[18px] text-[#D67D5C]">photo_library</span>
               <p className="text-sm text-[#574F49]">
                 <span className="font-semibold text-[#2D2D2D]">{photos.length}</span> photos available to discover
               </p>
             </div>
-          )}
+          ) : null}
 
           {/* How it works */}
           <div className="mb-6 space-y-3">
-            {[
-              { step: "1", text: "Enter your WhatsApp number", icon: "forum" },
-              { step: "2", text: "Browse all event photos", icon: "photo_library" },
-              { step: "3", text: "Upload a selfie to find your photos", icon: "face" },
-            ].map((item) => (
+            {steps.map((item) => (
               <div key={item.step} className="flex items-center gap-3.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-xs font-bold text-[#D67D5C]">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  privacyMode
+                    ? "bg-gradient-to-br from-violet-50 to-purple-100 text-violet-600"
+                    : "bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#D67D5C]"
+                }`}>
                   {item.step}
                 </span>
                 <p className="text-sm text-[#4D4945]">{item.text}</p>

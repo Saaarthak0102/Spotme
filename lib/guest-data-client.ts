@@ -74,10 +74,26 @@ export async function uploadGuestSelfie(payload: {
   return data as { id: string };
 }
 
+/**
+ * Check if an event has privacy_mode enabled.
+ * Client-safe: uses the anon key — only reads the events table.
+ */
+export async function getEventPrivacyMode(eventId: string): Promise<boolean> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from("events")
+    .select("privacy_mode")
+    .eq("id", eventId)
+    .single();
+  return data?.privacy_mode === true;
+}
+
 const GALLERY_PAGE_SIZE = 24;
 
 /**
  * Fetch event photos with cursor-based pagination (24 per page).
+ * Returns empty if the event has privacy_mode enabled — guests must use the selfie flow.
  * Uses thumb_url for fast grid rendering when available.
  */
 export async function fetchGuestGalleryClient(
@@ -85,6 +101,19 @@ export async function fetchGuestGalleryClient(
   cursor?: string // ISO timestamp of the last item from previous page
 ): Promise<{ photos: EventPhoto[]; nextCursor: string | null }> {
   const supabase = createClient();
+
+  // Respect privacy mode — never show general gallery if enabled
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: eventData } = await (supabase as any)
+    .from("events")
+    .select("privacy_mode")
+    .eq("id", eventId)
+    .single();
+
+  if (eventData?.privacy_mode === true) {
+    return { photos: [], nextCursor: null };
+  }
+
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
