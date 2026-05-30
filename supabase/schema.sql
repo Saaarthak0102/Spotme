@@ -361,9 +361,9 @@ create policy "guest-selfies: anyone can upload"
   to anon, authenticated
   with check ( bucket_id = 'guest-selfies' );
 
-create policy "guest-selfies: authenticated read"
+create policy "guest-selfies: anyone can read"
   on storage.objects for select
-  to authenticated
+  to anon, authenticated
   using ( bucket_id = 'guest-selfies' );
 
 -- ============================================================

@@ -11,7 +11,8 @@ type UploadStep = "idle" | "uploading" | "processing" | "done";
 export default function FindMePage() {
   const { eventId } = useParams<{ eventId: string }>();
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<UploadStep>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -46,7 +47,7 @@ export default function FindMePage() {
 
     const { error: uploadError } = await supabase.storage
       .from("guest-selfies")
-      .upload(storagePath, file, { upsert: true });
+      .upload(storagePath, file);
 
     clearInterval(progressInterval);
 
@@ -90,12 +91,24 @@ export default function FindMePage() {
     <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-5 py-10 sm:px-8">
       <div className="w-full max-w-sm">
 
-        {/* ── Hidden file input ─────────────────────── */}
+        {/* ── Hidden camera input ─────────────────────── */}
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/heic"
           capture="user"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileSelect(file);
+          }}
+        />
+
+        {/* ── Hidden gallery input ────────────────────── */}
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -121,7 +134,7 @@ export default function FindMePage() {
 
             {/* Upload circle */}
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => cameraInputRef.current?.click()}
               disabled={!guestId}
               className="group mx-auto mt-8 flex h-48 w-48 flex-col items-center justify-center rounded-full border-[3px] border-dashed border-[#D67D5C]/30 bg-gradient-to-br from-[#FDF8F1] to-[#FFF5EE] transition-all duration-300 hover:border-[#D67D5C]/60 hover:shadow-[0_0_40px_rgba(214,125,92,0.1)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed sm:h-56 sm:w-56"
             >
@@ -134,7 +147,7 @@ export default function FindMePage() {
 
             {/* Secondary option */}
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => galleryInputRef.current?.click()}
               disabled={!guestId}
               className="mx-auto mt-5 flex h-11 items-center gap-2 rounded-xl border border-[#2D2D2D]/8 bg-white px-5 text-xs font-semibold text-[#574F49] transition hover:bg-[#FDF8F1] active:scale-[0.98] disabled:opacity-50"
             >
