@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { uploadGuestSelfie } from "@/lib/guest-data-client";
 
 type UploadStep = "idle" | "uploading" | "processing" | "done";
 
@@ -33,65 +31,67 @@ export default function FindMePage() {
     setStep("uploading");
     setUploadProgress(0);
 
-    // Animate progress
+    // Animate progress (slow — real upload happens server-side)
     let prog = 0;
     const progressInterval = setInterval(() => {
-      prog = Math.min(prog + 12, 90);
+      prog = Math.min(prog + 5, 80);
       setUploadProgress(prog);
-    }, 80);
+    }, 120);
 
-    // Upload selfie to Supabase Storage
-    const supabase = createClient();
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const storagePath = `selfies/${eventId}/${Date.now()}.${ext}`;
+    try {
+      // ✅ Upload via server-side API route
+      // Uses SUPABASE_SERVICE_ROLE_KEY → bypasses all anon RLS/bucket policy issues
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("eventId", eventId);
+      if (guestId) formData.append("guestId", guestId);
 
-    const { error: uploadError } = await supabase.storage
-      .from("guest-selfies")
-      .upload(storagePath, file);
-
-    clearInterval(progressInterval);
-
-    if (uploadError) {
-      setStep("idle");
-      alert("Upload failed. Please try again.");
-      return;
-    }
-
-    setUploadProgress(100);
-
-    // Get public URL and save record
-    const { data: urlData } = supabase.storage.from("guest-selfies").getPublicUrl(storagePath);
-
-    if (guestId) {
-      await uploadGuestSelfie({
-        guest_id: guestId,
-        event_id: eventId,
-        storage_path: storagePath,
-        public_url: urlData.publicUrl,
+      const res = await fetch("/api/selfie/upload", {
+        method: "POST",
+        body: formData,
       });
+
+      clearInterval(progressInterval);
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = body?.error ?? `Server error ${res.status}`;
+        console.error("[find-me] Upload failed:", msg);
+        setStep("idle");
+        alert(`Upload failed: ${msg}`);
+        return;
+      }
+
+      setUploadProgress(100);
+
+      // Switch to processing animation
+      setStep("processing");
+      let dotCount = 0;
+      const dotInterval = setInterval(() => {
+        dotCount++;
+        setProcessingDots(dotCount % 4);
+      }, 400);
+
+      // After 3 seconds, redirect to my-photos
+      setTimeout(() => {
+        clearInterval(dotInterval);
+        setStep("done");
+        router.push(`/event/${eventId}/my-photos`);
+      }, 3000);
+    } catch (err) {
+      clearInterval(progressInterval);
+      const msg = err instanceof Error ? err.message : "Network error";
+      console.error("[find-me] Upload exception:", msg);
+      setStep("idle");
+      alert(`Upload failed: ${msg}`);
     }
-
-    // Switch to processing animation
-    setStep("processing");
-    let dotCount = 0;
-    const dotInterval = setInterval(() => {
-      dotCount++;
-      setProcessingDots(dotCount % 4);
-    }, 400);
-
-    // After 3 seconds, redirect to my-photos
-    setTimeout(() => {
-      clearInterval(dotInterval);
-      setStep("done");
-      router.push(`/event/${eventId}/my-photos`);
-    }, 3000);
   };
 
   return (
     <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-5 py-10 sm:px-8">
       <div className="w-full max-w-sm">
 
-        {/* ── Hidden camera input ─────────────────────── */}
+        {/* ── Hidden camera input (opens front camera on mobile) ── */}
         <input
           ref={cameraInputRef}
           type="file"
@@ -101,10 +101,12 @@ export default function FindMePage() {
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFileSelect(file);
+            // Reset so the same photo can be re-selected after an error
+            e.target.value = "";
           }}
         />
 
-        {/* ── Hidden gallery input ────────────────────── */}
+        {/* ── Hidden gallery input (no capture — shows photo library) ── */}
         <input
           ref={galleryInputRef}
           type="file"
@@ -113,6 +115,7 @@ export default function FindMePage() {
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFileSelect(file);
+            e.target.value = "";
           }}
         />
 
@@ -132,7 +135,7 @@ export default function FindMePage() {
               </div>
             )}
 
-            {/* Upload circle */}
+            {/* Upload circle — opens camera */}
             <button
               onClick={() => cameraInputRef.current?.click()}
               disabled={!guestId}
@@ -141,11 +144,11 @@ export default function FindMePage() {
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D67D5C]/10 text-[#B36144] transition-transform duration-300 group-hover:scale-110">
                 <span className="material-symbols-outlined text-[28px]">add_a_photo</span>
               </span>
-              <p className="mt-3 text-sm font-semibold text-[#2D2D2D]">Tap to upload</p>
-              <p className="mt-1 text-[10px] text-[#A69C93]">selfie or photo of yourself</p>
+              <p className="mt-3 text-sm font-semibold text-[#2D2D2D]">Take a selfie</p>
+              <p className="mt-1 text-[10px] text-[#A69C93]">opens your camera</p>
             </button>
 
-            {/* Secondary option */}
+            {/* Secondary option — opens gallery/photo library */}
             <button
               onClick={() => galleryInputRef.current?.click()}
               disabled={!guestId}
