@@ -3,25 +3,7 @@
 import { useEffect, useState } from "react";
 import { DashboardShell, PageHeading } from "@/components/dashboard/shell";
 
-/* ─── helpers ─── */
-function Toggle({ on }: { on: boolean }) {
-  const [active, setActive] = useState(on);
-  return (
-    <button
-      type="button"
-      onClick={() => setActive(!active)}
-      className={`relative inline-flex h-[26px] w-[46px] shrink-0 items-center rounded-full transition ${
-        active ? "bg-[#D67D5C]" : "bg-[#E0DBD5]"
-      }`}
-    >
-      <span
-        className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-          active ? "translate-x-[22px]" : "translate-x-[3px]"
-        }`}
-      />
-    </button>
-  );
-}
+
 
 function SectionTitle({ icon, title }: { icon: string; title: string }) {
   return (
@@ -345,17 +327,8 @@ export default function AccountPage() {
     return "Unlimited Plan";
   };
 
-  const notifications = [
-    { label: "Email notifications", detail: "Receive updates about new uploads and gallery activity", on: true },
-    { label: "WhatsApp alerts", detail: "Get instant alerts when guests access their photos", on: true },
-    { label: "Weekly digest", detail: "Summary of all activity across your events", on: false },
-    { label: "New guest notifications", detail: "Alert when new guests register via QR code", on: true },
-  ];
-
   const securityRows = [
     { label: "Change password", detail: "Last changed 3 months ago", icon: "lock", action: "Update" },
-    { label: "Two-factor authentication", detail: "Currently enabled via authenticator app", icon: "verified_user", action: "Manage" },
-    { label: "Active sessions", detail: "1 device currently signed in", icon: "devices", action: "View" },
   ];
 
   if (loading) {
@@ -414,26 +387,6 @@ export default function AccountPage() {
                   Photographer
                 </span>
               </div>
-            </div>
-          </div>
-
-          {/* ── Notification Preferences ── */}
-          <div className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/65 p-7 backdrop-blur-xl">
-            <SectionTitle icon="notifications" title="Notification Preferences" />
-
-            <div className="space-y-1">
-              {notifications.map((n) => (
-                <div
-                  key={n.label}
-                  className="flex items-center justify-between gap-4 rounded-2xl px-1 py-3.5 transition hover:bg-[#F4A261]/5"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#2D2D2D]">{n.label}</p>
-                    <p className="mt-0.5 text-xs text-[#827970]">{n.detail}</p>
-                  </div>
-                  <Toggle on={n.on} />
-                </div>
-              ))}
             </div>
           </div>
 

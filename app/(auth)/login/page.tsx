@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import Header from "@/components/landing/navbar";
 import Footer from "@/components/landing/footer";
 import MobileNav from "@/components/landing/mobile-nav";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthErrorMessage, getUrlAuthErrorMessage } from "@/lib/auth-errors";
 
 export default function Login() {
   const router = useRouter();
@@ -16,6 +17,18 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlError = params.get("error");
+      const urlErrorDesc = params.get("error_description");
+      if (urlError) {
+        const friendlyMessage = getUrlAuthErrorMessage(urlError, urlErrorDesc);
+        if (friendlyMessage) setError(friendlyMessage);
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
@@ -23,28 +36,27 @@ export default function Login() {
     setIsSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
+      
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (authError) {
-      if (
-        authError.message.toLowerCase().includes("invalid login credentials") ||
-        authError.message.toLowerCase().includes("credentials")
-      ) {
-        setError("Invalid password");
-      } else {
-        setError(authError.message);
+      if (authError) {
+        setError(getAuthErrorMessage(authError.message));
+        setIsSubmitting(false);
+        return;
       }
-      setIsSubmitting(false);
-      return;
-    }
 
-    // Redirect to dashboard on success
-    router.push("/dashboard");
-    router.refresh();
+      // Redirect to dashboard on success
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err?.message, "Something went wrong during sign in. Please try again."));
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -66,17 +78,10 @@ export default function Login() {
               <div className="bg-red-50 border border-red-100 text-sm rounded-2xl p-4 flex gap-3 items-start animate-fade-in">
                 <span className="material-symbols-outlined text-red-600 text-[20px] shrink-0 mt-0.5">warning</span>
                 <div className="flex-1">
-                  {error === "Invalid password" ? (
-                    <>
-                      <h4 className="font-semibold text-red-900 mb-0.5">Invalid password</h4>
-                      <p className="text-red-700 text-xs">The password you entered is incorrect. Please check your credentials and try again.</p>
-                    </>
-                  ) : (
-                    <>
-                      <h4 className="font-semibold text-red-900 mb-0.5">Authentication Error</h4>
-                      <p className="text-red-700 text-xs">{error}</p>
-                    </>
-                  )}
+                  <>
+                    <h4 className="font-semibold text-red-900 mb-0.5">Sign In Failed</h4>
+                    <p className="text-red-700 text-xs">{error}</p>
+                  </>
                 </div>
               </div>
             )}

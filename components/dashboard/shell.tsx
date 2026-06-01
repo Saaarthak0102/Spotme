@@ -52,7 +52,6 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
     storageUsedGB: number;
     storageMaxGB: number;
   } | null>(null);
-  const [status, setStatus] = useState<"available" | "busy" | "offline">("available");
 
   const initials = userName
     ? userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -117,19 +116,6 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
     fetchProfile();
   }, [userName]);
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
-
-  const statusColors = {
-    available: "bg-emerald-400 shadow-[0_0_8px_#34d399]",
-    busy: "bg-amber-400 shadow-[0_0_8px_#fbbf24]",
-    offline: "bg-rose-400 shadow-[0_0_8px_#f87171]",
-  };
-
   return (
     <div ref={menuRef} className="relative mt-8">
       {/* Profile trigger */}
@@ -141,7 +127,6 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#F4A261] to-[#D67D5C] text-sm font-semibold text-white border border-white/20 shadow-md transition-transform duration-300 group-hover:scale-105">
             {initials}
           </span>
-          <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#2D2D2D] transition-colors duration-300 ${statusColors[status]}`} />
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1 flex items-center justify-between">
@@ -159,7 +144,7 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
       {/* Popover Dropdown Menu (Rising up inside Sidebar) */}
       {menuOpen && (
         <div className={`absolute bottom-full z-50 mb-2 w-64 rounded-2xl border border-white/10 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur-2xl animate-page-enter ${collapsed ? "left-0" : "left-0 right-0"}`}>
-          <div className="border-b border-white/10 pb-3 px-2 py-1">
+          <div className="px-2 py-1">
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D67D5C] text-xs font-semibold text-white border border-white/10">
                 {initials}
@@ -169,54 +154,9 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
                 <p className="text-[10px] text-white/50 truncate mt-0.5">{userProfile?.email || "photographer@revela.com"}</p>
               </div>
             </div>
-            
-            {/* Status Quick Switcher */}
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-white/[0.04] p-1.5 border border-white/5">
-              <span className="text-[9px] font-semibold text-white/40 uppercase px-1.5">Status</span>
-              <div className="flex gap-1">
-                {(["available", "busy", "offline"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStatus(s)}
-                    title={s.charAt(0).toUpperCase() + s.slice(1)}
-                    className={`flex h-5 w-5 items-center justify-center rounded-md transition ${
-                      status === s
-                        ? "bg-white/10 text-white border border-white/10 shadow-xs"
-                        : "text-white/40 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${
-                      s === "available" ? "bg-emerald-400 animate-pulse" : s === "busy" ? "bg-amber-400" : "bg-rose-400"
-                    }`} />
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
-          {/* Premium Billing / Storage Overview */}
-          <div className="mt-3 rounded-xl bg-gradient-to-br from-white/[0.05] to-white/[0.01] p-3 border border-white/5">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500">
-                {userProfile?.plan ? `${userProfile.plan.toUpperCase()} MEMBER` : "FREE ACCOUNT"}
-              </span>
-              <span className="text-[10px] font-semibold text-white/60">
-                {userProfile ? `${Math.round((userProfile.storageUsedGB / userProfile.storageMaxGB) * 100)}%` : "0%"}
-              </span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261] transition-all duration-500"
-                style={{ width: userProfile ? `${(userProfile.storageUsedGB / userProfile.storageMaxGB) * 100}%` : "0%" }}
-              />
-            </div>
-            <p className="mt-2 text-[9px] text-white/45 flex items-center justify-between">
-              <span>{userProfile ? `${userProfile.storageUsedGB} GB used` : "0 GB used"}</span>
-              <span>of {userProfile?.storageMaxGB || 10} GB</span>
-            </p>
-          </div>
-
-          <div className="mt-2 space-y-0.5">
+          <div className="mt-3 space-y-0.5">
             <Link
               href="/dashboard/account"
               onClick={() => setMenuOpen(false)}
@@ -225,21 +165,6 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
               <span className="material-symbols-outlined text-[16px] text-[#F4A261] transition group-hover:rotate-45">tune</span>
               Account Settings
             </Link>
-            <Link
-              href="/dashboard/storage"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-white/70 hover:bg-white/[0.05] hover:text-white transition group"
-            >
-              <span className="material-symbols-outlined text-[16px] text-[#F4A261] transition group-hover:scale-110">cloud</span>
-              Storage Overview
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition text-left group"
-            >
-              <span className="material-symbols-outlined text-[16px] transition group-hover:-translate-x-0.5">logout</span>
-              Sign Out
-            </button>
           </div>
         </div>
       )}
@@ -1059,7 +984,7 @@ export function NotificationDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "guests" | "photos">("all");
+  const activeTab = "all";
   const router = useRouter();
 
   const loadNotifications = useCallback(async () => {
@@ -1243,22 +1168,7 @@ export function NotificationDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           </div>
         </div>
 
-        {/* Tab Filters */}
-        <div className="mt-4 flex gap-1.5 rounded-xl bg-[#F5EFEA]/60 p-1 border border-[#2D2D2D]/5">
-          {(["all", "guests", "photos"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                activeTab === tab
-                  ? "bg-white text-[#2D2D2D] shadow-xs border border-[#2D2D2D]/5"
-                  : "text-[#766D66] hover:text-[#2D2D2D]"
-              }`}
-            >
-              {tab === "all" ? "All Activity" : tab === "guests" ? "Guests" : "Photos"}
-            </button>
-          ))}
-        </div>
+
 
         {/* Scrollable list */}
         <div className="mt-5 flex-1 overflow-y-auto space-y-3.5 pr-1 dash-scroll">
@@ -1396,7 +1306,6 @@ export function DashboardShell({
         </button>
 
         <Brand collapsed={isCollapsed && !sidebarOpen} />
-        <ProfileBlock collapsed={isCollapsed && !sidebarOpen} userName={userName} />
         
         <nav className="mt-8 space-y-1.5">
           {mainNavigation.map((item) => (
@@ -1410,7 +1319,6 @@ export function DashboardShell({
           ))}
         </nav>
 
-        <StorageFooter collapsed={isCollapsed && !sidebarOpen} />
 
         <button
           onClick={toggleCollapse}
@@ -1576,8 +1484,6 @@ export function EventWorkspaceShell({
           })}
         </nav>
 
-        <ProfileBlock collapsed={isCollapsed && !sidebarOpen} userName={userName} />
-        <StorageFooter collapsed={isCollapsed && !sidebarOpen} />
 
         <button
           onClick={toggleCollapse}

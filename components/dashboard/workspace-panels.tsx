@@ -50,10 +50,37 @@ export function EventOverviewPanel({
   const [localPhotos, setLocalPhotos] = useState<EventPhoto[]>(photos);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(photos.length === 50);
 
   useEffect(() => {
     setLocalPhotos(photos);
+    setHasMore(photos.length === 50);
   }, [photos]);
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const supabase = createClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("event_photos")
+        .select("*")
+        .eq("event_id", event.id)
+        .order("uploaded_at", { ascending: false })
+        .range(localPhotos.length, localPhotos.length + 49);
+
+      if (!error && data) {
+        setLocalPhotos((prev) => [...prev, ...(data as EventPhoto[])]);
+        setHasMore(data.length === 50);
+      }
+    } catch (err) {
+      console.error("Failed to load more photos:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -271,6 +298,23 @@ export function EventOverviewPanel({
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Load More button */}
+        {!searchQuery && hasMore && (
+          <div className="mt-5 flex justify-center">
+            <button
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="flex items-center gap-2 rounded-xl border border-[#2D2D2D]/8 bg-white px-6 py-2.5 text-xs font-semibold text-[#574F49] transition hover:bg-[#FDF8F1] hover:border-[#D67D5C]/30 active:scale-[0.98] disabled:opacity-50"
+            >
+              {loadingMore ? (
+                <><span className="material-symbols-outlined text-[16px] animate-spin">sync</span> Loading...</>
+              ) : (
+                <><span className="material-symbols-outlined text-[16px]">add</span> Load 50 More Photos</>
+              )}
+            </button>
           </div>
         )}
       </section>

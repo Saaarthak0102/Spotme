@@ -7,6 +7,7 @@ import MobileNav from "@/components/landing/mobile-nav";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
 export default function UpdatePassword() {
   const router = useRouter();
@@ -20,29 +21,38 @@ export default function UpdatePassword() {
 
   useEffect(() => {
     const handleRecovery = async () => {
-      const supabase = createClient();
-      
-      // 1. Check if there is a code in the URL query parameters (PKCE flow)
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+      try {
+        const supabase = createClient();
+        
+        // 1. Check if there is a code in the URL query parameters (PKCE flow)
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
 
-      if (code) {
-        setIsVerifying(true);
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error("Error exchanging code for session:", error);
-          setSessionError("Failed to initialize password reset session. The link may have expired or is invalid.");
-        }
-        setIsVerifying(false);
-      } else {
-        // 2. If no code, check if we have a session (either already loaded or from hash fragment parsed by the client)
-        setTimeout(async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            setSessionError("You must access this page through a valid password reset link.");
+        if (code) {
+          setIsVerifying(true);
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setSessionError("This password reset link has expired or is no longer valid. Please request a new one.");
           }
           setIsVerifying(false);
-        }, 800);
+        } else {
+          // 2. If no code, check if we have a session (either already loaded or from hash fragment parsed by the client)
+          setTimeout(async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session) {
+                setSessionError("You must access this page through a valid password reset link.");
+              }
+              setIsVerifying(false);
+            } catch {
+              setSessionError("Something went wrong while verifying your session. Please request a new reset link.");
+              setIsVerifying(false);
+            }
+          }, 800);
+        }
+      } catch {
+        setSessionError("Something went wrong. Please request a new password reset link.");
+        setIsVerifying(false);
       }
     };
 
@@ -59,25 +69,31 @@ export default function UpdatePassword() {
     setIsSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.updateUser({
-      password: password,
-    });
+    try {
+      const supabase = createClient();
+      
+      const { error: authError } = await supabase.auth.updateUser({
+        password: password,
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError(getAuthErrorMessage(authError.message, "Unable to update your password. Please try again."));
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccess(true);
       setIsSubmitting(false);
-      return;
+
+      // Redirect to dashboard after a short success message
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 2000);
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err?.message, "Something went wrong while updating your password. Please try again."));
+      setIsSubmitting(false);
     }
-
-    setSuccess(true);
-    setIsSubmitting(false);
-
-    // Redirect to dashboard after a short success message
-    setTimeout(() => {
-      router.push("/dashboard");
-      router.refresh();
-    }, 2000);
   };
 
   return (

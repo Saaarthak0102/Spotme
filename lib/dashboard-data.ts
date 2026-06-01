@@ -108,9 +108,14 @@ export async function createEvent(
 // -------------------------------------------------------
 
 /**
- * Fetch all photos for an event (dashboard — owner-scoped).
+ * Fetch photos for an event (dashboard — owner-scoped).
+ * Defaults to first 50 photos; pass limit/offset for pagination.
  */
-export async function fetchEventPhotos(eventId: string): Promise<EventPhoto[]> {
+export async function fetchEventPhotos(
+  eventId: string,
+  limit = 50,
+  offset = 0
+): Promise<EventPhoto[]> {
   const supabase = await createClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,7 +123,8 @@ export async function fetchEventPhotos(eventId: string): Promise<EventPhoto[]> {
     .from("event_photos")
     .select("*")
     .eq("event_id", eventId)
-    .order("uploaded_at", { ascending: false });
+    .order("uploaded_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error("fetchEventPhotos error:", error.message);

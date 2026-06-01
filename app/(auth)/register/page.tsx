@@ -7,6 +7,7 @@ import MobileNav from "@/components/landing/mobile-nav";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
 export default function Register() {
   const router = useRouter();
@@ -25,25 +26,31 @@ export default function Register() {
     setIsSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      const supabase = createClient();
+      
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
         },
-      },
-    });
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError(getAuthErrorMessage(authError.message));
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccess(true);
       setIsSubmitting(false);
-      return;
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err?.message, "Something went wrong during registration. Please try again."));
+      setIsSubmitting(false);
     }
-
-    setSuccess(true);
-    setIsSubmitting(false);
   };
 
   return (

@@ -6,6 +6,7 @@ import Footer from "@/components/landing/footer";
 import MobileNav from "@/components/landing/mobile-nav";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -20,19 +21,25 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     setError(null);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
+    try {
+      const supabase = createClient();
+      
+      const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError(getAuthErrorMessage(authError.message, "Unable to send reset link. Please try again."));
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccess(true);
       setIsSubmitting(false);
-      return;
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err?.message, "Something went wrong. Please try again."));
+      setIsSubmitting(false);
     }
-
-    setSuccess(true);
-    setIsSubmitting(false);
   };
 
   return (
