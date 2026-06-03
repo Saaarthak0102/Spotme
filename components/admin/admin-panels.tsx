@@ -37,15 +37,28 @@ function StatCard({
 }
 
 /* ── Warm Sidebar ── */
-function AdminSidebar({ active }: { active: string }) {
+function AdminSidebar({ active, isOpen, onClose }: { active: string; isOpen?: boolean; onClose?: () => void }) {
   const router = useRouter();
   const handleSignOut = async () => {
     await fetch("/api/auth/signout", { method: "POST" });
     router.push("/login");
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isOpen]);
+
   return (
-    <aside className="fixed top-0 left-0 h-screen w-60 border-r border-[#EFE6DD] bg-[#FAF5EF] flex flex-col z-30">
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 z-20 bg-stone-900/40 backdrop-blur-sm lg:hidden" onClick={onClose} />
+      )}
+      <aside className={`fixed inset-y-0 left-0 w-60 border-r border-[#EFE6DD] bg-[#FAF5EF] flex flex-col z-30 transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
       {/* Brand */}
       <div className="px-5 py-5 border-b border-[#EFE6DD]">
         <div className="flex items-center gap-2.5">
@@ -98,6 +111,7 @@ function AdminSidebar({ active }: { active: string }) {
         </button>
       </div>
     </aside>
+    </>
   );
 }
 
@@ -143,7 +157,7 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
   return (
     <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
       {/* Title Header */}
-      <div className="flex items-center justify-between border-b border-[#EFE6DD] pb-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EFE6DD] pb-4 mb-4">
         <div>
           <h3 className="text-sm font-bold text-[#2D2D2D]">Inference & System Health</h3>
           <p className="text-xs text-[#827970] mt-0.5">Live status and resource estimation of the local AI core</p>
@@ -221,7 +235,7 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
               <span className="text-xs font-bold text-[#827970] uppercase tracking-wider">Today's Workload Estimates</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3">
               <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
                 <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">AI Inference Jobs</p>
                 <p className="text-xl font-bold text-[#2D2D2D] mt-2">{totalAIJobsToday.toLocaleString()}</p>
@@ -255,6 +269,7 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
    OVERVIEW PAGE
    ═══════════════════════════════════════════════ */
 export function AdminOverview() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [events, setEvents] = useState<AdminEventRow[]>([]);
   const [chartData, setChartData] = useState<AdminChartData | null>(null);
@@ -304,14 +319,22 @@ export function AdminOverview() {
 
   return (
     <div className="flex min-h-screen bg-[#FCF9F8]">
-      <AdminSidebar active="Overview" />
-      <main className="flex-1 pl-60">
-        <div className="p-8 max-w-[1280px]">
+      <AdminSidebar active="Overview" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="flex-1 min-w-0 lg:pl-60">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1280px]">
           {/* Header */}
-          <div className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-            <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Platform Overview</h1>
-            <p className="mt-1 text-sm text-[#827970]">Platform aggregates, operational growth, and inference system diagnostics.</p>
+          <div className="flex items-center gap-4 mb-6 lg:mb-8">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+              <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">Platform Overview</h1>
+              <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Platform aggregates, operational growth, and inference system diagnostics.</p>
+            </div>
           </div>
 
           {loading ? (
@@ -324,7 +347,7 @@ export function AdminOverview() {
               {/* ─── CUMULATIVE STAT CARDS ROW ─── */}
               <section>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">All Time</h2>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
                   <StatCard label="Photographers" value={stats.totalPhotographers} icon="photo_camera" accent="text-[#D67D5C]"
                     sub={stats.thisMonthGuests > 0 ? `+${stats.thisMonthGuests} this month` : undefined} />
                   <StatCard label="Total Events" value={stats.totalEvents} icon="photo_library"
@@ -344,7 +367,7 @@ export function AdminOverview() {
               {/* ─── THIS MONTH QUICK STATS ─── */}
               <section>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">This Month</h2>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
                   <StatCard label="Active Events" value={stats.activeEvents} icon="event_available" accent="text-[#60D9A0]" />
                   <StatCard label="New Events" value={stats.thisMonthEvents} icon="add_circle" />
                   <StatCard label="Photos This Month" value={stats.thisMonthPhotos} icon="photo" accent="text-[#5B8DEF]" />
@@ -476,8 +499,9 @@ export function AdminOverview() {
               <section>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Recent Events</h2>
                 <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <table className="w-full text-sm">
-                    <thead>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[700px]">
+                      <thead>
                       <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
                         <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
                         <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
@@ -519,7 +543,8 @@ export function AdminOverview() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               </section>
             </div>
@@ -593,11 +618,12 @@ function PhotographerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-[#2D2D2D]">{isEdit ? "Edit Photographer" : "Add Photographer"}</h2>
-        <p className="mt-1 text-sm text-[#827970]">{isEdit ? "Update their profile details." : "Create a new photographer account."}</p>
+      <div className="relative w-full max-w-md max-h-[90dvh] flex flex-col rounded-2xl border border-[#EFE6DD] bg-white shadow-2xl overflow-hidden">
+        <div className="p-6 overflow-y-auto">
+          <h2 className="text-lg font-bold text-[#2D2D2D]">{isEdit ? "Edit Photographer" : "Add Photographer"}</h2>
+          <p className="mt-1 text-sm text-[#827970]">{isEdit ? "Update their profile details." : "Create a new photographer account."}</p>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
             <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Full Name</label>
             <input
@@ -688,13 +714,15 @@ function PhotographerModal({
               {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Account"}
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
 }
 
 export function AdminPhotographers() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [photographers, setPhotographers] = useState<PhotographerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -724,22 +752,31 @@ export function AdminPhotographers() {
 
   return (
     <div className="flex min-h-screen bg-[#FCF9F8]">
-      <AdminSidebar active="Photographers" />
-      <main className="flex-1 pl-60">
-        <div className="p-8 max-w-6xl">
+      <AdminSidebar active="Photographers" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="flex-1 min-w-0 lg:pl-60">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-              <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Photographers</h1>
-              <p className="mt-1 text-sm text-[#827970]">Manage photographer accounts on the platform.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 lg:mb-8">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
+              >
+                <span className="material-symbols-outlined text-[22px]">menu</span>
+              </button>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+                <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">Photographers</h1>
+                <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Manage photographer accounts on the platform.</p>
+              </div>
             </div>
             <button
               onClick={handleAdd}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 transition"
+              className="flex self-start sm:self-auto items-center gap-2 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 transition"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
-              Add Photographer
+              <span className="hidden sm:inline">Add Photographer</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
 
@@ -750,8 +787,9 @@ export function AdminPhotographers() {
             </div>
           ) : (
             <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-              <table className="w-full text-sm">
-                <thead>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead>
                   <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
                     <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
                     <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
@@ -831,7 +869,8 @@ export function AdminPhotographers() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -852,6 +891,7 @@ export function AdminPhotographers() {
    EVENTS PAGE
    ═══════════════════════════════════════════════ */
 export function AdminEvents() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [events, setEvents] = useState<AdminEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
@@ -942,15 +982,23 @@ export function AdminEvents() {
 
   return (
     <div className="flex min-h-screen bg-[#FCF9F8]">
-      <AdminSidebar active="Events" />
-      <main className="flex-1 pl-60">
-        <div className="p-8 max-w-6xl">
+      <AdminSidebar active="Events" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="flex-1 min-w-0 lg:pl-60">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
           {/* Top Panel Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-              <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Platform Events</h1>
-              <p className="mt-1 text-sm text-[#827970]">Browse events using a standard list or daily event density calendar.</p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 lg:mb-8">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
+              >
+                <span className="material-symbols-outlined text-[22px]">menu</span>
+              </button>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+                <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">Platform Events</h1>
+                <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Browse events using a standard list or daily event density calendar.</p>
+              </div>
             </div>
 
             {/* Toggle Table/Calendar View */}
@@ -1013,19 +1061,19 @@ export function AdminEvents() {
 
                   {/* Calendar Weekday Names */}
                   <div className="grid grid-cols-7 text-center text-xs font-bold text-[#827970] uppercase border-b border-[#EFE6DD]/80 pb-2 mb-3">
-                    <div>Mon</div>
-                    <div>Tue</div>
-                    <div>Wed</div>
-                    <div>Thu</div>
-                    <div>Fri</div>
-                    <div>Sat</div>
-                    <div>Sun</div>
+                    <div><span className="hidden sm:inline">Mon</span><span className="sm:hidden">M</span></div>
+                    <div><span className="hidden sm:inline">Tue</span><span className="sm:hidden">T</span></div>
+                    <div><span className="hidden sm:inline">Wed</span><span className="sm:hidden">W</span></div>
+                    <div><span className="hidden sm:inline">Thu</span><span className="sm:hidden">T</span></div>
+                    <div><span className="hidden sm:inline">Fri</span><span className="sm:hidden">F</span></div>
+                    <div><span className="hidden sm:inline">Sat</span><span className="sm:hidden">S</span></div>
+                    <div><span className="hidden sm:inline">Sun</span><span className="sm:hidden">S</span></div>
                   </div>
 
                   {/* Calendar Day Grid cells */}
                   <div className="grid grid-cols-7 gap-2">
                     {calendarDays.map((d, index) => {
-                      if (d === null) return <div key={`empty-${index}`} className="h-20 bg-stone-50/30 rounded-xl border border-transparent" />;
+                      if (d === null) return <div key={`empty-${index}`} className="h-14 sm:h-20 bg-stone-50/30 rounded-xl border border-transparent" />;
 
                       const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
                       const dayEvents = eventsByDate[dayStr] || [];
@@ -1039,7 +1087,7 @@ export function AdminEvents() {
                               setSelectedDateStr(isSelected ? null : dayStr);
                             }
                           }}
-                          className={`h-20 rounded-xl border p-2 flex flex-col justify-between transition-all duration-200 select-none ${
+                          className={`h-14 sm:h-20 rounded-xl border p-1 sm:p-2 flex flex-col justify-between transition-all duration-200 select-none ${
                             dayEvents.length > 0
                               ? "cursor-pointer hover:bg-[#D67D5C]/5"
                               : "opacity-60"
@@ -1053,8 +1101,9 @@ export function AdminEvents() {
                             {d}
                           </span>
                           {dayEvents.length > 0 && (
-                            <span className="inline-flex self-start items-center rounded-full bg-[#D67D5C]/10 px-2 py-0.5 text-[10px] font-bold text-[#94492c]">
-                              {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                            <span className="inline-flex self-start items-center rounded-full bg-[#D67D5C]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#94492c]">
+                              <span className="hidden sm:inline">{dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}</span>
+                              <span className="sm:hidden">{dayEvents.length}</span>
                             </span>
                           )}
                         </div>
@@ -1085,8 +1134,9 @@ export function AdminEvents() {
                 )}
 
                 <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <table className="w-full text-sm">
-                    <thead>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[700px]">
+                      <thead>
                       <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
                         <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
                         <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
@@ -1135,7 +1185,8 @@ export function AdminEvents() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1150,6 +1201,7 @@ export function AdminEvents() {
    INQUIRIES PAGE
    ═══════════════════════════════════════════════ */
 export function AdminInquiries() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [inquiries, setInquiries] = useState<InquiryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -1231,15 +1283,23 @@ export function AdminInquiries() {
 
   return (
     <div className="flex min-h-screen bg-[#FCF9F8]">
-      <AdminSidebar active="Inquiries" />
-      <main className="flex-1 pl-60">
-        <div className="p-8 max-w-6xl">
+      <AdminSidebar active="Inquiries" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="flex-1 min-w-0 lg:pl-60">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-              <h1 className="mt-1 text-2xl font-bold text-[#2D2D2D] tracking-tight">Event Inquiries</h1>
-              <p className="mt-1 text-sm text-[#827970]">Review and manage potential event inquiries submitted via the public portal.</p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 lg:mb-8">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
+              >
+                <span className="material-symbols-outlined text-[22px]">menu</span>
+              </button>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+                <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">Event Inquiries</h1>
+                <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Review and manage potential event inquiries submitted via the public portal.</p>
+              </div>
             </div>
             
             {/* Search Bar */}
@@ -1262,8 +1322,9 @@ export function AdminInquiries() {
             </div>
           ) : (
             <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)] animate-page-enter">
-              <table className="w-full text-sm">
-                <thead>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead>
                   <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
                     <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Inquirer</th>
                     <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
@@ -1339,7 +1400,8 @@ export function AdminInquiries() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -1369,7 +1431,7 @@ export function AdminInquiries() {
 
             {/* Info Grid */}
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-xl bg-stone-50/50 p-4 border border-[#EFE6DD]">
                   <span className="text-[10px] font-bold text-[#827970] uppercase tracking-wider block">Email Address</span>
                   <a href={`mailto:${selectedInquiry.email}`} className="text-sm font-semibold text-[#2D2D2D] hover:underline mt-1 block truncate">
@@ -1384,7 +1446,7 @@ export function AdminInquiries() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-xl bg-stone-50/50 p-4 border border-[#EFE6DD]">
                   <span className="text-[10px] font-bold text-[#827970] uppercase tracking-wider block">Event Date</span>
                   <p className="text-sm font-semibold text-[#2D2D2D] mt-1">
@@ -1399,7 +1461,7 @@ export function AdminInquiries() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-xl bg-stone-50/50 p-4 border border-[#EFE6DD]">
                   <span className="text-[10px] font-bold text-[#827970] uppercase tracking-wider block">Event Type</span>
                   <div>
@@ -1430,7 +1492,7 @@ export function AdminInquiries() {
                 )}
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-[#EFE6DD]">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[#EFE6DD]">
                 <a
                   href={`mailto:${selectedInquiry.email}?subject=Inquiry regarding your ${selectedInquiry.event_type || "event"}`}
                   className="flex-1 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-4 py-3 text-sm font-semibold text-white shadow-md hover:opacity-95 transition flex items-center justify-center gap-2"
