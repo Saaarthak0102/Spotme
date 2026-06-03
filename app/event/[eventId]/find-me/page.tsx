@@ -44,7 +44,7 @@ export default function FindMePage() {
       const urlRes = await fetch("/api/selfie/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, ext }),
+        body: JSON.stringify({ eventId, guestId, ext }),
       });
 
       if (!urlRes.ok) {

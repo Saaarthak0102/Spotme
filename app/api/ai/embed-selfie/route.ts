@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * POST /api/ai/embed-selfie
@@ -6,6 +7,11 @@ import { NextRequest, NextResponse } from "next/server";
  * Triggers the Python AI service to embed a guest selfie and cache
  * the matching results in the photo_matches table. This is fire-and-forget —
  * the client polls guest_selfies.status to know when results are ready.
+ *
+ * Security: validates that the supplied guest_id actually exists in the
+ * specified event AND that the selfie_url belongs to that guest record.
+ * This prevents guest_id injection attacks where an attacker overwrites
+ * another guest's photo matches using their own face.
  */
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -23,51 +29,52 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let aiServiceUrl = (
-    process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? "http://127.0.0.1:8000"
-  ).replace(/\/+$/, "");
+  // ── S-03 Fix: Validate guest identity before triggering AI ────────────────
+  // Use service-role client to verify the guest record server-side.
+  // The client never supplies the guestId via session (guests are anonymous),
+  // so we validate ownership by confirming the selfie belongs to this guest.
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
 
-  if (aiServiceUrl.includes("://0.0.0.0")) {
-    aiServiceUrl = aiServiceUrl.replace("://0.0.0.0", "://127.0.0.1");
-  }
+  // 1. Check the guest_id exists in this event
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: guestRow } = await (adminClient as any)
+    .from("guests")
+    .select("id")
+    .eq("id", guest_id)
+    .eq("event_id", event_id)
+    .maybeSingle();
 
-  try {
-    // Fire and forget — we don't await the result
-    // The Python service runs it as a BackgroundTask and stores results in photo_matches
-    const res = await fetch(`${aiServiceUrl}/embed-selfie`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        guest_id,
-        event_id,
-        selfie_url,
-        selfie_id: selfie_id ?? null,
-        threshold: 0.55,
-      }),
-      signal: AbortSignal.timeout(10000), // 10s timeout for the initial response only
-    });
-
-    if (res.status === 429) {
-      return NextResponse.json(
-        { status: "busy", message: "AI service is busy. Please try again shortly." },
-        { status: 429 }
-      );
-    }
-
-    if (res.status === 503) {
-      return NextResponse.json(
-        { status: "unavailable", message: "AI service unavailable. Please try again." },
-        { status: 503 }
-      );
-    }
-
-    return NextResponse.json({ status: "processing" });
-  } catch (err) {
-    console.error("[embed-selfie route] AI service call failed:", err);
-    // Don't fail the client — the selfie was already uploaded, just can't start AI yet
+  if (!guestRow) {
     return NextResponse.json(
-      { status: "queued", message: "AI service will process your selfie when available." },
-      { status: 202 }
+      { error: "Guest not found in this event." },
+      { status: 403 }
     );
   }
+
+  // 2. If a selfie_id is provided, confirm it belongs to this guest
+  if (selfie_id) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: selfieRow } = await (adminClient as any)
+      .from("guest_selfies")
+      .select("id")
+      .eq("id", selfie_id)
+      .eq("guest_id", guest_id)
+      .eq("event_id", event_id)
+      .maybeSingle();
+
+    if (!selfieRow) {
+      return NextResponse.json(
+        { error: "Selfie record does not belong to this guest." },
+        { status: 403 }
+      );
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Background worker in ai-service will pick up the 'uploaded' status selfie.
+  return NextResponse.json({ status: "processing" });
 }

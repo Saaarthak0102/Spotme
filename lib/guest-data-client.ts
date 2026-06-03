@@ -154,32 +154,18 @@ export async function fetchMyPhotos(
   guestId: string,
   eventId: string
 ): Promise<EventPhoto[]> {
-  const supabase = createClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("photo_matches")
-    .select(
-      `
-      similarity,
-      event_photos:event_photos!photo_id (
-        id, storage_path, public_url, thumb_url, medium_url, blur_hash,
-        original_filename, uploaded_at, file_size_bytes, mime_type
-      )
-      `
-    )
-    .eq("guest_id", guestId)
-    .eq("event_id", eventId)
-    .order("similarity", { ascending: false });
-
-  if (error) {
-    console.error("fetchMyPhotos error:", error.message);
+  try {
+    const res = await fetch(`/api/guest/${eventId}/photos?guestId=${guestId}`);
+    if (!res.ok) {
+      console.error("fetchMyPhotos server error:", res.statusText);
+      return [];
+    }
+    const data = await res.json();
+    return data.photos || [];
+  } catch (error) {
+    console.error("fetchMyPhotos fetch error:", error);
     return [];
   }
-
-  return ((data ?? []) as Array<{ event_photos: EventPhoto }>)
-    .map((row) => row.event_photos)
-    .filter(Boolean);
 }
 
 /**
@@ -195,69 +181,15 @@ export async function getGuestSelfieStatus(
   status: string | null;
   matchCount: number;
 }> {
-  const supabase = createClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: selfieData } = await (supabase as any)
-    .from("guest_selfies")
-    .select("id, public_url, status, uploaded_at")
-    .eq("guest_id", guestId)
-    .eq("event_id", eventId)
-    .order("uploaded_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!selfieData) {
+  try {
+    const res = await fetch(`/api/guest/${eventId}/status?guestId=${guestId}`);
+    if (!res.ok) {
+      console.error("getGuestSelfieStatus server error:", res.statusText);
+      return { selfieId: null, selfieUrl: null, status: null, matchCount: 0 };
+    }
+    return await res.json();
+  } catch (error) {
+    console.error("getGuestSelfieStatus fetch error:", error);
     return { selfieId: null, selfieUrl: null, status: null, matchCount: 0 };
   }
-
-  // Count cached matches
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count } = await (supabase as any)
-    .from("photo_matches")
-    .select("id", { count: "exact", head: true })
-    .eq("guest_id", guestId)
-    .eq("event_id", eventId);
-
-  let status = selfieData.status as string;
-
-  // Cache Stale Detection: If photographer uploaded new photos after the guest last matched,
-  // we force the status back to 'uploaded' to trigger a background re-run of the AI match.
-  if (status === "matched" || status === "uploaded") {
-    // 1. Get the latest match time for this guest
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: latestMatch } = await (supabase as any)
-      .from("photo_matches")
-      .select("matched_at")
-      .eq("guest_id", guestId)
-      .eq("event_id", eventId)
-      .order("matched_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // 2. Get the latest photo upload time for this event
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: latestPhoto } = await (supabase as any)
-      .from("event_photos")
-      .select("uploaded_at")
-      .eq("event_id", eventId)
-      .order("uploaded_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const lastMatchTime = latestMatch 
-      ? new Date(latestMatch.matched_at) 
-      : new Date(selfieData.uploaded_at || 0);
-
-    if (latestPhoto && new Date(latestPhoto.uploaded_at) > lastMatchTime) {
-      status = "uploaded";
-    }
-  }
-
-  return {
-    selfieId: selfieData.id as string,
-    selfieUrl: selfieData.public_url as string,
-    status: status,
-    matchCount: count ?? 0,
-  };
 }

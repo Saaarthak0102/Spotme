@@ -47,25 +47,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 });
   }
 
-  // Trigger background face indexing call to the Python AI service
-  let aiServiceUrl = (process.env.NEXT_PUBLIC_AI_SERVICE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
-  if (aiServiceUrl.includes("://0.0.0.0")) {
-    aiServiceUrl = aiServiceUrl.replace("://0.0.0.0", "://127.0.0.1");
-  }
-
-  if (data && data.public_url) {
-    fetch(`${aiServiceUrl}/index`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        photo_id: data.id,
-        event_id: data.event_id,
-        image_url: data.public_url
-      })
-    }).catch(err => {
-      console.error("Failed to notify AI service for indexing:", err);
-    });
-  }
-
   return NextResponse.json(data);
 }

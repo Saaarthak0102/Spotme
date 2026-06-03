@@ -17,8 +17,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // S-08 fix: AI_SERVICE_URL is server-only (no NEXT_PUBLIC_ prefix)
   let aiServiceUrl = (
-    process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? "http://127.0.0.1:8000"
+    process.env.AI_SERVICE_URL ?? process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? "http://127.0.0.1:8000"
   ).replace(/\/+$/, "");
 
   if (aiServiceUrl.includes("://0.0.0.0")) {

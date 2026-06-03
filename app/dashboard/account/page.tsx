@@ -32,22 +32,25 @@ function ChangePlanModal({
       id: "free",
       name: "Starter",
       price: "₹0",
-      desc: "For hobbyists and casual shooters",
+      period: "Free forever",
+      desc: "For casual photographers at small events.",
       features: ["1 Active Event", "10 GB Cloud Storage", "AI Face Matching", "Dynamic QR Access"]
     },
     {
       id: "pro",
-      name: "Pro",
-      price: "₹1,699",
-      desc: "Best for active professional photographers",
-      features: ["5 Active Events", "100 GB Cloud Storage", "AI Face Matching", "WhatsApp Guest Alerts", "Custom Branding"]
+      name: "Personal Pro",
+      price: "₹999",
+      period: "/month",
+      desc: "For full-time freelance photographers.",
+      features: ["Up to 10 Events", "100 GB Cloud Storage", "AI Face Matching", "Privacy Mode", "Priority AI Processing", "Custom Branding"]
     },
     {
       id: "unlimited",
-      name: "Unlimited",
-      price: "₹4,199",
-      desc: "Unmatched scale for busy studios",
-      features: ["Unlimited Events", "1 TB Cloud Storage", "Team Access Support", "Branded Galleries", "Priority Support"]
+      name: "Studio",
+      price: "₹2,499",
+      period: "/month",
+      desc: "For studios managing high-volume events.",
+      features: ["Unlimited Events", "500 GB Cloud Storage", "Branded Galleries", "Priority Support", "Multi-Photographer Workflows"]
     },
   ];
 
@@ -81,84 +84,99 @@ function ChangePlanModal({
 
     setLoading(true);
 
-    // Free upgrade (Starter)
+    // ── Free downgrade: no payment needed ─────────────────────────────────
     if (selectedPlan === "free") {
       try {
         const res = await fetch("/api/payments/upgrade", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan: "free" })
+          body: JSON.stringify({ plan: "free" }),
         });
         if (!res.ok) throw new Error();
-        alert("Subscription downgraded to Free (Starter) Pack.");
+        alert("Plan changed to Starter (Free).");
         onUpdated();
         onClose();
-      } catch (err) {
-        alert("Failed to downgrade subscription.");
+      } catch {
+        alert("Failed to change plan. Please try again.");
       } finally {
         setLoading(false);
       }
       return;
     }
 
-    // Pro or Unlimited upgrades (Paid)
-    const scriptLoaded = await loadRazorpayScript();
-    const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY || "";
+    // ── Paid upgrade: create server-side Razorpay order first ─────────────
+    try {
+      const orderRes = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: selectedPlan }),
+      });
 
-    if (!scriptLoaded || !razorpayKey) {
-      // Razorpay Credentials missing or script blocked -> Fallback to gorgeous sandbox payment simulator!
-      setLoading(false);
-      setShowSimulator(true);
-      return;
-    }
+      if (!orderRes.ok) throw new Error("Failed to initiate payment.");
+      const orderData = await orderRes.json();
 
-    // Live Razorpay popup setup
-    const priceMap: Record<string, number> = { pro: 169900, unlimited: 419900 };
-    const planNameMap: Record<string, string> = { pro: "Pro Plan Subscription", unlimited: "Unlimited Plan Subscription" };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const options = {
-      key: razorpayKey,
-      amount: priceMap[selectedPlan] || 0,
-      currency: "INR",
-      name: "Revela / Spotme",
-      description: planNameMap[selectedPlan] || "Plan Upgrade",
-      image: "https://bjjefivgzmswxwonxnta.supabase.co/storage/v1/object/public/event-covers/revela-logo.png",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      handler: async function (response: any) {
-        setLoading(true);
-        try {
-          const res = await fetch("/api/payments/upgrade", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              plan: selectedPlan,
-              razorpay_payment_id: response.razorpay_payment_id
-            })
-          });
-          if (!res.ok) throw new Error();
-          alert(`Congratulations! You have upgraded to the ${selectedPlan.toUpperCase()} subscription.`);
-          onUpdated();
-          onClose();
-        } catch (err) {
-          alert("Payment completed but subscription update failed. Contact support.");
-        } finally {
-          setLoading(false);
-        }
-      },
-      prefill: {
-        name: "Photographer User",
-        email: "photographer@revela.photos"
-      },
-      theme: {
-        color: "#D67D5C"
+      // If Razorpay is not configured on the server → sandbox simulator
+      if (orderData.sandbox) {
+        setLoading(false);
+        setShowSimulator(true);
+        return;
       }
-    };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rzp = new (window as any).Razorpay(options);
-    rzp.open();
-    setLoading(false);
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setLoading(false);
+        setShowSimulator(true);
+        return;
+      }
+
+      const planLabelMap: Record<string, string> = {
+        pro: "Personal Pro Plan",
+        unlimited: "Studio Plan",
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const options: any = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        order_id: orderData.orderId, // Real order ID from Razorpay
+        name: "Revela Photos",
+        description: planLabelMap[selectedPlan] || "Plan Upgrade",
+        theme: { color: "#D67D5C" },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: async (response: any) => {
+          setLoading(true);
+          try {
+            const upgradeRes = await fetch("/api/payments/upgrade", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                plan: selectedPlan,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+            if (!upgradeRes.ok) throw new Error();
+            alert(`You are now on the ${planLabelMap[selectedPlan] || selectedPlan} plan!`);
+            onUpdated();
+            onClose();
+          } catch {
+            alert("Payment completed but plan update failed. Please contact support with your payment ID.");
+          } finally {
+            setLoading(false);
+          }
+        },
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const simulateSuccess = async () => {
@@ -211,9 +229,9 @@ function ChangePlanModal({
                     <span className="text-[10px] bg-[#D67D5C]/12 px-1.5 py-0.5 rounded text-[#B36144] font-semibold">Active</span>
                   )}
                 </div>
-                <div className="mt-2 flex items-baseline">
+                <div className="mt-2 flex items-baseline gap-1">
                   <span className="text-2xl font-bold text-[#2D2D2D]">{p.price}</span>
-                  <span className="text-xs text-[#827970]">/mo</span>
+                  <span className="text-xs text-[#827970]">{p.period}</span>
                 </div>
                 <p className="mt-2 text-xs text-[#827970] leading-normal flex-1">{p.desc}</p>
                 <ul className="mt-4 space-y-2 border-t border-[#2D2D2D]/5 pt-4 w-full">
@@ -255,7 +273,7 @@ function ChangePlanModal({
                 <div className="flex justify-between">
                   <span>Amount:</span>{" "}
                   <span className="font-semibold">
-                    {selectedPlan === "pro" ? "₹1,699.00" : "₹4,199.00"}
+                    {selectedPlan === "pro" ? "₹999.00" : "₹2,499.00"}
                   </span>
                 </div>
               </div>
@@ -450,14 +468,14 @@ export default function AccountPage() {
 
   const getPlanPriceLabel = (plan: string) => {
     if (plan === "free") return "₹0 / month";
-    if (plan === "pro") return "₹1,699 / month";
-    return "₹4,199 / month";
+    if (plan === "pro") return "₹999 / month";
+    return "₹2,499 / month";
   };
 
   const getPlanNameLabel = (plan: string) => {
-    if (plan === "free") return "Starter Pack";
-    if (plan === "pro") return "Pro Plan";
-    return "Unlimited Plan";
+    if (plan === "free") return "Starter";
+    if (plan === "pro") return "Personal Pro";
+    return "Studio Plan";
   };
 
   const securityRows = [
