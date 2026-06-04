@@ -187,17 +187,7 @@ export default function Contact() {
               </div>
 
               {/* Contact Details Column */}
-              <div className="lg:col-span-5 space-y-gutter lg:pl-12">
-                <div className="bg-primary text-on-primary p-10 rounded-[32px] soft-lift feature-lift transition-all duration-300">
-                  <span className="material-symbols-outlined text-[32px] mb-6">calendar_today</span>
-                  <h3 className="font-serif text-2xl font-bold mb-4">Schedule a Discovery Call</h3>
-                  <p className="opacity-80 font-sans text-sm mb-8 leading-relaxed">
-                    We would love to hear your story in person. Choose a time that works for you to discuss your vision and our collections. To receive custom-tailored pricing for your project, you are welcome to discuss your goals with us during the meeting.
-                  </p>
-                  <button className="bg-surface-bright text-primary px-8 py-3 rounded-xl font-sans font-semibold text-sm hover:bg-white transition-all active:scale-95 cursor-pointer">
-                    Book a Meeting
-                  </button>
-                </div>
+              <div className="lg:col-span-5 lg:pl-12">
                 <div className="bg-surface-container-high p-10 rounded-[32px] soft-lift space-y-10 border border-outline-variant/20">
                   <div>
                     <h4 className="font-sans font-bold text-xs text-primary uppercase tracking-wider mb-4">
@@ -206,17 +196,17 @@ export default function Contact() {
                     <div className="space-y-4">
                       <a
                         className="flex items-center gap-4 text-on-surface font-serif text-lg font-semibold hover:text-primary transition-colors break-all"
-                        href="mailto:hello@revela.com"
+                        href="mailto:bharathvarmatony@gmail.com"
                       >
                         <span className="material-symbols-outlined opacity-60">mail</span>
-                        hello@revela.com
+                        bharathvarmatony@gmail.com
                       </a>
                       <a
                         className="flex items-center gap-4 text-on-surface font-serif text-lg font-semibold hover:text-primary transition-colors"
-                        href="tel:+15550000000"
+                        href="tel:+918919885401"
                       >
                         <span className="material-symbols-outlined opacity-60">call</span>
-                        +1 (555) 000-0000
+                        +91 89198 85401
                       </a>
                     </div>
                   </div>
@@ -225,11 +215,9 @@ export default function Contact() {
                       The Studio
                     </h4>
                     <p className="text-on-surface-variant font-sans text-sm leading-relaxed">
-                      124 Heritage Lane
+                      Hyderabad
                       <br />
-                      Suite 400, Charleston
-                      <br />
-                      South Carolina, 29401
+                      India
                     </p>
                   </div>
                   <div>
@@ -282,7 +270,7 @@ export default function Contact() {
               >
                 location_on
               </span>
-              <span className="font-serif text-xl font-bold text-primary">Charleston, SC</span>
+              <span className="font-serif text-xl font-bold text-primary">Hyderabad, India</span>
               <p className="text-[11px] font-sans text-on-surface-variant uppercase tracking-widest mt-1">
                 Our Base of Operations
               </p>

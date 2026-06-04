@@ -131,14 +131,6 @@ body {
   box-shadow: 0 30px 60px -12px rgba(148, 73, 44, 0.15), 0 18px 36px -18px rgba(0, 0, 0, 0.1);
 }
 
-.feature-lift {
-  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.feature-lift:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px -10px rgba(148, 73, 44, 0.12);
-}
-
 .quint-ease {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
