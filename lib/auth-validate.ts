@@ -84,7 +84,7 @@ export function containsDangerousInput(value: string): boolean {
     /javascript:/i,
     /on\w+\s*=/i,        // onclick=, onerror=, etc.
     /--\s/,              // SQL line comment
-    /\/\*.*\*\//s,       // SQL block comment
+    /\/\*[\s\S]*?\*\//,       // SQL block comment
     /;\s*(drop|delete|truncate|insert|update|select|union)\s/i,
     /\bunion\s+(all\s+)?select\b/i,
     /\bexec\s*\(/i,
