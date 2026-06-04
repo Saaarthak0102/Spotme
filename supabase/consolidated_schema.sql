@@ -310,15 +310,6 @@ CREATE POLICY "Owners can manage their event photos"
     )
   );
 
-CREATE POLICY "Anyone can view photos from active events"
-  ON public.event_photos FOR SELECT
-  TO anon, authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.events e
-      WHERE e.id = event_id AND e.status = 'active' AND e.qr_active = true
-    )
-  );
 
 -- -------------------------------------------------------
 -- Guests RLS
@@ -327,15 +318,6 @@ DROP POLICY IF EXISTS "Anyone can register as a guest"     ON public.guests;
 DROP POLICY IF EXISTS "Guests can view their own record"   ON public.guests;
 DROP POLICY IF EXISTS "Owners can view guests in their events" ON public.guests;
 
-CREATE POLICY "Anyone can register as a guest"
-  ON public.guests FOR INSERT
-  TO anon, authenticated
-  WITH CHECK ( true );
-
-CREATE POLICY "Guests can view their own record"
-  ON public.guests FOR SELECT
-  TO anon, authenticated
-  USING ( true );
 
 CREATE POLICY "Owners can view guests in their events"
   ON public.guests FOR SELECT
@@ -531,10 +513,9 @@ GRANT SELECT ON public.events TO anon;
 
 -- event_photos
 GRANT SELECT, INSERT, DELETE ON public.event_photos TO authenticated;
-GRANT SELECT ON public.event_photos TO anon;
 
 -- guests
-GRANT SELECT, INSERT ON public.guests TO anon, authenticated;
+GRANT SELECT, INSERT ON public.guests TO authenticated;
 
 -- guest_selfies (no anon SELECT — access via server API)
 GRANT INSERT ON public.guest_selfies TO anon;

@@ -15,31 +15,23 @@ export async function registerGuest(
   phone: string,
   displayName: string
 ): Promise<Guest | null> {
-  const supabase = createClient();
+  try {
+    const res = await fetch(`/api/guest/${eventId}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, displayName }),
+    });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existing } = await (supabase as any)
-    .from("guests")
-    .select("*")
-    .eq("event_id", eventId)
-    .eq("phone", phone)
-    .single();
+    if (!res.ok) {
+      console.error("registerGuest server error:", res.statusText);
+      return null;
+    }
 
-  if (existing) return existing as Guest;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("guests")
-    .insert({ event_id: eventId, phone, display_name: displayName })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("registerGuest error:", error.message);
+    return await res.json();
+  } catch (error) {
+    console.error("registerGuest fetch error:", error);
     return null;
   }
-
-  return data as Guest;
 }
 
 /**
@@ -100,50 +92,24 @@ export async function fetchGuestGalleryClient(
   eventId: string,
   cursor?: string // ISO timestamp of the last item from previous page
 ): Promise<{ photos: EventPhoto[]; nextCursor: string | null }> {
-  const supabase = createClient();
-
-  // Respect privacy mode — never show general gallery if enabled
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: eventData } = await (supabase as any)
-    .from("events")
-    .select("privacy_mode")
-    .eq("id", eventId)
-    .single();
-
-  if (eventData?.privacy_mode === true) {
+  try {
+    const url = cursor
+      ? `/api/guest/${eventId}/gallery?cursor=${encodeURIComponent(cursor)}`
+      : `/api/guest/${eventId}/gallery`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error("fetchGuestGalleryClient server error:", res.statusText);
+      return { photos: [], nextCursor: null };
+    }
+    const data = await res.json();
+    return {
+      photos: data.photos || [],
+      nextCursor: data.nextCursor || null,
+    };
+  } catch (error) {
+    console.error("fetchGuestGalleryClient fetch error:", error);
     return { photos: [], nextCursor: null };
   }
-
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase as any)
-    .from("event_photos")
-    .select(
-      "id, storage_path, public_url, thumb_url, medium_url, blur_hash, original_filename, uploaded_at, file_size_bytes, mime_type"
-    )
-    .eq("event_id", eventId)
-    .order("uploaded_at", { ascending: false })
-    .limit(GALLERY_PAGE_SIZE);
-
-  if (cursor) {
-    query = query.lt("uploaded_at", cursor);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("fetchGuestGalleryClient error:", error.message);
-    return { photos: [], nextCursor: null };
-  }
-
-  const photos = (data ?? []) as EventPhoto[];
-  const nextCursor =
-    photos.length === GALLERY_PAGE_SIZE
-      ? (photos[photos.length - 1] as EventPhoto & { uploaded_at: string })
-          .uploaded_at
-      : null;
-
-  return { photos, nextCursor };
 }
 
 /**

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hasEventSession } from "@/lib/guest-session";
 
 // Server-side admin client — uses service role key
 const adminSupabase = createClient(
@@ -31,6 +32,12 @@ export async function POST(req: NextRequest) {
         { error: "Missing storagePath, eventId, or guestId" },
         { status: 400 }
       );
+    }
+
+    // Verify guest session cookie for this event
+    const isAuthorized = await hasEventSession(eventId);
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // ── H-1 Fix: Validate storagePath ownership ───────────────────────────────

@@ -202,34 +202,10 @@ create policy "Owners can manage their event photos"
     )
   );
 
--- Anyone can view photos from active events (for guest gallery)
-create policy "Anyone can view photos from active events"
-  on public.event_photos for select
-  to anon, authenticated
-  using (
-    exists (
-      select 1 from public.events e
-      where e.id = event_id
-        and e.status = 'active'
-        and e.qr_active = true
-    )
-  );
 
 -- -------------------------------------------------------
 -- Guests Policies
 -- -------------------------------------------------------
--- Anyone can insert themselves as a guest (register)
-create policy "Anyone can register as a guest"
-  on public.guests for insert
-  to anon, authenticated
-  with check ( true );
-
--- Guests can view their own record (we store guest_id in cookie/session)
-create policy "Guests can view their own record"
-  on public.guests for select
-  to anon, authenticated
-  using ( true );
-
 -- Owners can view all guests in their events
 create policy "Owners can view guests in their events"
   on public.guests for select
@@ -374,10 +350,9 @@ grant select, insert, update on public.profiles to authenticated;
 grant select, insert on public.events to authenticated;
 grant update, delete on public.events to authenticated;
 grant select, insert, delete on public.event_photos to authenticated;
-grant select on public.event_photos to anon;
-grant select, insert on public.guests to anon, authenticated;
-grant select, insert on public.guest_selfies to anon, authenticated;
-grant select on public.photo_matches to anon, authenticated;
+grant select, insert on public.guests to authenticated;
+grant select, insert on public.guest_selfies to authenticated;
+grant select on public.photo_matches to authenticated;
 grant insert, update, delete on public.photo_matches to authenticated;
 
 -- ============================================================

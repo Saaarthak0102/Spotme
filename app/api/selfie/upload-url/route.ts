@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hasEventSession } from "@/lib/guest-session";
 
 /**
  * POST /api/selfie/upload-url
@@ -35,6 +36,12 @@ export async function POST(req: NextRequest) {
         { error: "Missing eventId or guestId" },
         { status: 400 }
       );
+    }
+
+    // Verify guest session cookie for this event
+    const isAuthorized = await hasEventSession(eventId);
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const adminSupabase = getAdminClient();

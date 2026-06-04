@@ -1,12 +1,20 @@
 import Link from "next/link";
+import { SessionInitializer } from "./session-initializer";
 
-export default function GuestLayout({
+export default async function GuestLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ eventId: string }>;
 }) {
+  const { eventId } = await params;
+
   return (
     <div className="min-h-screen bg-[#FEFCFB] font-sans text-[#2D2D2D]">
+      {/* Session initializer runs on client load */}
+      <SessionInitializer eventId={eventId} />
+
       {/* Minimal top branding bar */}
       <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-center bg-white/70 backdrop-blur-xl border-b border-[#2D2D2D]/5 sm:h-16">
         <Link href="/" className="flex items-center gap-2 group">

@@ -4,6 +4,7 @@
 // ============================================================
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Event, EventPhoto } from "@/types/database";
+import { hasEventSession } from "@/lib/guest-session";
 
 export type { Event, EventPhoto };
 
@@ -38,6 +39,12 @@ export async function getGuestEvent(eventId: string): Promise<Event | null> {
  * Server-safe: use this in Server Components.
  */
 export async function fetchGuestGallery(eventId: string): Promise<EventPhoto[]> {
+  // 1. Verify guest session cookie for this event
+  const isAuthorized = await hasEventSession(eventId);
+  if (!isAuthorized) {
+    return [];
+  }
+
   const supabase = await createServerClient();
 
   // Check privacy_mode first (cheap, single-row read)

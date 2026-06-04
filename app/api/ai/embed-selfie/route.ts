@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hasEventSession } from "@/lib/guest-session";
 
 /**
  * POST /api/ai/embed-selfie
@@ -27,6 +28,12 @@ export async function POST(req: NextRequest) {
       { error: "Missing required fields: guest_id, event_id, selfie_url" },
       { status: 400 }
     );
+  }
+
+  // Verify guest session cookie for this event
+  const isAuthorized = await hasEventSession(event_id);
+  if (!isAuthorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // ── S-03 Fix: Validate guest identity before triggering AI ────────────────

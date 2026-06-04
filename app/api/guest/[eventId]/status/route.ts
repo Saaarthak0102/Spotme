@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hasEventSession } from "@/lib/guest-session";
 
 // Service role client needed because anon RLS read is disabled for security
 const adminClient = createClient(
@@ -17,6 +18,12 @@ export async function GET(
 
   if (!eventId || !guestId) {
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+  }
+
+  // Verify guest session cookie for this event
+  const isAuthorized = await hasEventSession(eventId);
+  if (!isAuthorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
