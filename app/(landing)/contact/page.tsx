@@ -212,7 +212,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h4 className="font-sans font-bold text-xs text-primary uppercase tracking-wider mb-4">
-                      Head Office
+                      Office
                     </h4>
                     <p className="text-on-surface-variant font-sans text-sm leading-relaxed">
                       Bahadurpully
