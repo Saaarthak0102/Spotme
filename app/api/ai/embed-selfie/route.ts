@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hasEventSession } from "@/lib/guest-session";
+import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
 /**
  * POST /api/ai/embed-selfie
@@ -15,6 +16,14 @@ import { hasEventSession } from "@/lib/guest-session";
  * another guest's photo matches using their own face.
  */
 export async function POST(req: NextRequest) {
+  // F-09: CSRF check
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+
+  // F-14: Body size limit
+  const sizeError = checkBodySize(req, 16 * 1024);
+  if (sizeError) return sizeError;
+
   const body = await req.json();
   const { guest_id, event_id, selfie_url, selfie_id } = body as {
     guest_id: string;

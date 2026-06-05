@@ -357,7 +357,7 @@ export default function Inquire() {
               {/* Response Timeline details */}
               <div className="lg:col-span-4 space-y-gutter lg:pl-8">
                 <div className="bg-surface-container p-10 rounded-[32px] border border-outline-variant/15 shadow-sm space-y-8">
-                  <h3 className="font-serif text-xl font-bold text-primary">The Revela Process</h3>
+                  <h3 className="font-serif text-xl font-bold text-primary">The Spotme Process</h3>
                   <div className="space-y-8 relative pl-6 border-l border-outline-variant/30">
                     <div className="relative">
                       <div className="absolute -left-[35px] top-0.5 w-[18px] h-[18px] rounded-full bg-primary ring-4 ring-background"></div>

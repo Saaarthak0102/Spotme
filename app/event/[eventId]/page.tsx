@@ -121,7 +121,7 @@ export default async function EventLandingPage({
           </Link>
 
           <p className="mt-4 text-center text-[11px] text-[#A69C93]">
-            Powered by Revela · Your photos are private and secure
+            Powered by Spotme · Your photos are private and secure
           </p>
         </div>
       </div>

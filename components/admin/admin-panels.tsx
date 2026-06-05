@@ -66,7 +66,7 @@ function AdminSidebar({ active, isOpen, onClose }: { active: string; isOpen?: bo
             <span className="material-symbols-outlined text-[16px]">shield</span>
           </span>
           <div>
-            <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Revela Admin</span>
+            <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Spotme Admin</span>
             <p className="text-[10px] text-[#827970] font-medium leading-none mt-0.5">Super Admin</p>
           </div>
         </div>

@@ -83,7 +83,7 @@ export default function About() {
               </h2>
               <div className="space-y-6 text-sm md:text-base text-on-surface-variant leading-relaxed">
                 <p>
-                  Revela was born amidst the cobbled streets and Renaissance air of Florence, Italy. It began not as a company, but as a realization: that in our digital age, we were losing the tactile permanence of our most cherished memories.
+                  Spotme was born amidst the cobbled streets and Renaissance air of Florence, Italy. It began not as a company, but as a realization: that in our digital age, we were losing the tactile permanence of our most cherished memories.
                 </p>
                 <p>
                   Inspired by the master archivists of the Uffizi and the timeless quality of Italian craftsmanship, we set out to bridge the gap between ephemeral data and everlasting art.

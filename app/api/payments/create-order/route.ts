@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
 // ── Server-side price map (paise) — NEVER let the client supply amounts ──────
 const PLAN_PRICES: Record<string, number> = {
@@ -23,6 +24,14 @@ const PLAN_LABELS: Record<string, string> = {
  */
 export async function POST(req: NextRequest) {
   try {
+    // F-09: CSRF check
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
+    // F-14: Body size limit (only {plan} in body)
+    const sizeError = checkBodySize(req, 4 * 1024);
+    if (sizeError) return sizeError;
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

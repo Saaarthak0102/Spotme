@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import crypto from "crypto";
+import { type NextRequest } from "next/server";
+import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
 // ── Server-side plan config map ───────────────────────────────────────────────
 // Keep in sync with lib/admin-data.ts PLAN_ENTITLEMENTS
@@ -22,8 +24,16 @@ const PLAN_CONFIG: Record<string, { maxEvents: number; maxStorageGb: number }> =
  *   { plan: "free" }
  *   { plan: "pro"|"unlimited", razorpay_payment_id, razorpay_order_id, razorpay_signature }
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // F-09: CSRF check
+    const csrfError = checkCsrf(request);
+    if (csrfError) return csrfError;
+
+    // F-14: Body size limit
+    const sizeError = checkBodySize(request, 8 * 1024);
+    if (sizeError) return sizeError;
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -73,13 +83,24 @@ export async function POST(request: Request) {
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
           .digest("hex");
 
-        if (expectedSignature !== razorpay_signature) {
+        // ── F-16 Fix: Use timing-safe comparison to prevent timing oracle attacks ──
+        // JavaScript's !== leaks information about the HMAC byte-by-byte via
+        // response time differences. timingSafeEqual is constant-time.
+        const expectedBuf = Buffer.from(expectedSignature, "hex");
+        const receivedBuf = Buffer.from(razorpay_signature, "hex");
+
+        const signaturesMatch =
+          expectedBuf.length === receivedBuf.length &&
+          crypto.timingSafeEqual(expectedBuf, receivedBuf);
+
+        if (!signaturesMatch) {
           console.error("[payments/upgrade] Signature mismatch — possible payment forgery attempt");
           return NextResponse.json(
             { error: "Payment verification failed. Signature mismatch." },
             { status: 403 }
           );
         }
+
       }
     }
 

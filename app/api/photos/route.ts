@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
 export async function POST(req: NextRequest) {
+  // F-09: CSRF check
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+
+  // F-14: Body size limit (photo metadata only — no file bytes come through here)
+  const sizeError = checkBodySize(req, 16 * 1024);
+  if (sizeError) return sizeError;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

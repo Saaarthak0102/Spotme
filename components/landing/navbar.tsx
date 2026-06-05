@@ -21,7 +21,7 @@ export default function Header() {
         {/* Left side: Logo */}
         <div className="flex-shrink-0">
           <Link href="/" className="font-serif text-3xl font-bold text-primary italic tracking-tight">
-            Revela
+            Spotme
           </Link>
         </div>
 

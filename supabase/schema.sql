@@ -1,5 +1,5 @@
 -- ============================================================
--- Spotme / Revela — Database Schema
+-- Spotme — Database Schema
 -- Run this in your Supabase project: SQL Editor → New Query
 -- ============================================================
 
@@ -226,10 +226,9 @@ create policy "Anyone can upload a selfie"
   to anon, authenticated
   with check ( true );
 
-create policy "Guests can view their own selfies"
-  on public.guest_selfies for select
-  to anon, authenticated
-  using ( true );
+-- F-06 Fix: Remove the blanket anon SELECT — selfie status is served exclusively
+-- through the Next.js API layer which validates the guest session cookie.
+-- Direct Supabase Data API reads by anon are no longer permitted.
 
 create policy "Owners can view selfies in their events"
   on public.guest_selfies for select
@@ -257,10 +256,21 @@ create policy "Owners can manage matches in their events"
     )
   );
 
-create policy "Guests can view their own matches"
+-- F-04 Fix: Replace the blanket using(true) policy that exposed ALL matches to
+-- every anonymous caller. Match results are now served exclusively through the
+-- Next.js API (which checks the guest session cookie). Only event owners can
+-- query photo_matches directly through the Data API.
+create policy "Only owners can view photo matches directly"
   on public.photo_matches for select
-  to anon, authenticated
-  using ( true );
+  to authenticated
+  using (
+    exists (
+      select 1 from public.event_photos ep
+      join public.events e on e.id = ep.event_id
+      where ep.id = event_photo_id
+        and e.owner_id = (select auth.uid())
+    )
+  );
 
 -- ============================================================
 -- Storage Buckets
@@ -285,12 +295,14 @@ create policy "event-covers: public read"
   to anon, authenticated
   using ( bucket_id = 'event-covers' );
 
+-- F-08 Fix: Require the path's first folder segment to match the uploader's uid.
+-- Storage path convention: {user_id}/{event_id}/cover.{ext}
 create policy "event-covers: authenticated upload"
   on storage.objects for insert
   to authenticated
   with check (
     bucket_id = 'event-covers'
-    and (select auth.uid()) is not null
+    and (select auth.uid())::text = (storage.foldername(name))[1]
   );
 
 create policy "event-covers: owners can update"
@@ -323,12 +335,18 @@ create policy "event-photos: read active event photos"
   to anon, authenticated
   using ( bucket_id = 'event-photos' );
 
+-- F-07 Fix: Only the event owner may delete photos from the event-photos bucket.
+-- Storage path convention: {event_id}/{filename}
 create policy "event-photos: owners can delete"
   on storage.objects for delete
   to authenticated
   using (
     bucket_id = 'event-photos'
-    and (select auth.uid()) is not null
+    and exists (
+      select 1 from public.events e
+      where e.id::text = (storage.foldername(name))[1]
+        and e.owner_id = (select auth.uid())
+    )
   );
 
 -- guest-selfies: anyone can upload, owners can read
@@ -394,15 +412,18 @@ CREATE POLICY "Owners can manage face embeddings in their events"
     )
   );
 
-CREATE POLICY "Anyone can view face embeddings from active events"
+-- F-05 Fix: ArcFace embeddings are biometric data and must NEVER be readable by
+-- anonymous users. The face-matching query runs entirely server-side via the
+-- Python AI service using the service-role key. Owners can inspect embeddings
+-- for debugging; no anon access is granted.
+CREATE POLICY "Only event owners can view face embeddings"
   ON public.face_embeddings FOR SELECT
-  TO anon, authenticated
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.events e
       WHERE e.id = event_id
-        AND e.status = 'active'
-        AND e.qr_active = true
+        AND e.owner_id = (SELECT auth.uid())
     )
   );
 

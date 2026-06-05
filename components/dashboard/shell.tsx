@@ -43,7 +43,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
       </span>
       {!collapsed && (
         <span className="text-xl font-semibold tracking-[-0.04em] text-white transition-opacity duration-200">
-          Revela
+          Spotme
         </span>
       )}
     </Link>
@@ -161,7 +161,7 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-white text-xs truncate">{userProfile?.fullName || displayName}</p>
-                <p className="text-[10px] text-white/50 truncate mt-0.5">{userProfile?.email || "photographer@revela.com"}</p>
+                <p className="text-[10px] text-white/50 truncate mt-0.5">{userProfile?.email || "photographer@spotme.com"}</p>
               </div>
             </div>
           </div>
@@ -281,7 +281,7 @@ function NavbarProfile({ userName }: { userName?: string }) {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-[#2D2D2D] text-xs truncate">{userProfile?.fullName || displayName}</p>
-                <p className="text-[10px] text-[#766D66] truncate mt-0.5">{userProfile?.email || "photographer@revela.com"}</p>
+                <p className="text-[10px] text-[#766D66] truncate mt-0.5">{userProfile?.email || "photographer@spotme.com"}</p>
               </div>
             </div>
             <div className="mt-2.5 flex items-center justify-between">

@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hasEventSession } from "@/lib/guest-session";
 
-const adminClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+// ── F-17 Fix: Per-request factory — avoids silent env-var failures at module load
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Supabase env vars not configured");
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 const GALLERY_PAGE_SIZE = 24;
 
@@ -29,7 +33,7 @@ export async function GET(
 
   try {
     // 2. Fetch event details using the service-role client
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminClient = getAdminClient();
     const { data: eventData, error: eventError } = await (adminClient as any)
       .from("events")
       .select("status, qr_active, privacy_mode")

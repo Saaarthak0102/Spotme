@@ -141,7 +141,7 @@ function ChangePlanModal({
         amount: orderData.amount,
         currency: orderData.currency,
         order_id: orderData.orderId, // Real order ID from Razorpay
-        name: "Revela Photos",
+        name: "Spotme Photos",
         description: planLabelMap[selectedPlan] || "Plan Upgrade",
         theme: { color: "#D67D5C" },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,7 +269,7 @@ function ChangePlanModal({
               </p>
               <div className="mt-4 rounded-xl bg-[#FDF8F1] p-3 text-left space-y-1.5 text-xs text-[#574F49]">
                 <div className="flex justify-between">
-                  <span>Merchant:</span> <span className="font-semibold">Revela Photos</span>
+                  <span>Merchant:</span> <span className="font-semibold">Spotme Photos</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Amount:</span>{" "}

@@ -1,17 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hasEventSession } from "@/lib/guest-session";
+import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
-const adminClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+// ── F-17 Fix: Per-request factory instead of module-level singleton ───────────
+// Module-level instantiation silently swallows missing env vars at cold start.
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Supabase env vars not configured (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)");
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+// ── F-03: E.164 phone format pattern ─────────────────────────────────────────
+// Accepts +[country code][number], 8–15 digits total after the leading +.
+const E164_RE = /^\+[1-9]\d{7,14}$/;
+
+// ── F-18: Max displayName length ─────────────────────────────────────────────
+const MAX_NAME_LENGTH = 100;
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
+  // F-09: CSRF check
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+
+  // F-14: Body size limit (16 KB is more than enough for name + phone)
+  const sizeError = checkBodySize(req, 16 * 1024);
+  if (sizeError) return sizeError;
+
   const { eventId } = await params;
 
   if (!eventId) {
@@ -25,10 +46,38 @@ export async function POST(
   }
 
   try {
-    const { phone, displayName } = await req.json();
-    if (!phone || !displayName) {
-      return NextResponse.json({ error: "Missing phone or displayName" }, { status: 400 });
+    const { phone: rawPhone, displayName: rawName } = await req.json();
+
+    // ── F-03: Validate and normalise phone number ──────────────────────────
+    if (!rawPhone) {
+      return NextResponse.json({ error: "Missing phone" }, { status: 400 });
     }
+    // Strip common visual separators, then enforce E.164
+    const phone = String(rawPhone).trim().replace(/[\s\-().]/g, "");
+    if (!E164_RE.test(phone)) {
+      return NextResponse.json(
+        { error: "Invalid phone number. Please use international format, e.g. +919876543210" },
+        { status: 400 }
+      );
+    }
+
+    // ── F-18: Validate and sanitise displayName ────────────────────────────
+    if (!rawName) {
+      return NextResponse.json({ error: "Missing displayName" }, { status: 400 });
+    }
+    const displayName = String(rawName).trim().slice(0, MAX_NAME_LENGTH);
+    if (!displayName) {
+      return NextResponse.json({ error: "displayName cannot be empty" }, { status: 400 });
+    }
+    // Reject HTML tags to prevent stored XSS in any rendering surface
+    if (/<[^>]*>/.test(displayName)) {
+      return NextResponse.json(
+        { error: "displayName must not contain HTML tags" },
+        { status: 400 }
+      );
+    }
+
+    const adminClient = getAdminClient();
 
     // 2. Check if guest already exists for this event + phone
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,3 +116,4 @@ export async function POST(
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+

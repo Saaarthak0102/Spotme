@@ -918,7 +918,7 @@ export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount:
     setOrigin(window.location.origin);
   }, []);
 
-  const eventUrl = `${origin || "https://spotme.revela.com"}/event/${event.id}`;
+  const eventUrl = `${origin || "https://spotme.app"}/event/${event.id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(eventUrl);

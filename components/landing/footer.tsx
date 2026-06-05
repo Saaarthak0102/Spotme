@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="max-w-container-max mx-auto px-margin-desktop">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-16">
           <div className="col-span-1">
-            <span className="font-serif text-3xl font-bold text-primary italic">Revela</span>
+            <span className="font-serif text-3xl font-bold text-primary italic">Spotme</span>
             <p className="font-sans text-sm text-on-surface-variant mt-4 leading-relaxed">
               Preserving life&apos;s most intimate milestones with timeless grace. We combine high-end technology with artistic vision.
             </p>
@@ -69,7 +69,7 @@ export default function Footer() {
         </div>
         <div className="border-t border-outline-variant/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
           <p className="text-xs text-on-surface-variant">
-            &copy; {new Date().getFullYear()} Revela Photography. All rights reserved.
+            &copy; {new Date().getFullYear()} Spotme Photography. All rights reserved.
           </p>
           <div className="flex gap-6">
             <a href="#" className="text-xs text-on-surface-variant hover:text-primary transition-colors">

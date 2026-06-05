@@ -1,5 +1,5 @@
 // ============================================================
-// Spotme / Revela — Supabase Database Types
+// Spotme — Supabase Database Types
 // Mirrors the schema in supabase/schema.sql
 // ============================================================
 

@@ -1,5 +1,5 @@
 -- ============================================================
--- Spotme / Revela — Consolidated Database Schema v2
+-- Spotme — Consolidated Database Schema v2
 -- Single-file, idempotent setup for a brand-new Supabase project.
 -- Run this entirely in SQL Editor → New Query.
 --

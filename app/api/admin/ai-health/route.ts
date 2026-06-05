@@ -4,6 +4,25 @@ import { requireAdmin } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
 
+// ── F-12: Private/internal IP allowlist for the AI service URL ───────────────
+// Prevents SSRF if AI_SERVICE_URL is misconfigured to an external host.
+// Only loopback and RFC-1918 private addresses are permitted.
+const PRIVATE_IP_RE = /^https?:\/\/(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?/;
+
+function resolveAiServiceUrl(): string | null {
+  // Only use the server-only env var — never the NEXT_PUBLIC_ one
+  const raw = process.env.AI_SERVICE_URL ?? "http://127.0.0.1:8000";
+  const cleaned = raw.replace(/\/+$/, "").replace("://0.0.0.0", "://127.0.0.1");
+
+  if (!PRIVATE_IP_RE.test(cleaned)) {
+    console.error(
+      `[ai-health] AI_SERVICE_URL "${cleaned}" does not match private IP allowlist. Refusing to proxy.`
+    );
+    return null;
+  }
+  return cleaned;
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -17,13 +36,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // S-08 fix: AI_SERVICE_URL is server-only (no NEXT_PUBLIC_ prefix)
-  let aiServiceUrl = (
-    process.env.AI_SERVICE_URL ?? process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? "http://127.0.0.1:8000"
-  ).replace(/\/+$/, "");
-
-  if (aiServiceUrl.includes("://0.0.0.0")) {
-    aiServiceUrl = aiServiceUrl.replace("://0.0.0.0", "://127.0.0.1");
+  const aiServiceUrl = resolveAiServiceUrl();
+  if (!aiServiceUrl) {
+    return NextResponse.json(
+      { status: "misconfigured", error: "AI_SERVICE_URL is not a valid private address." },
+      { status: 500 }
+    );
   }
 
   try {
@@ -46,3 +64,4 @@ export async function GET(req: NextRequest) {
     }, { status: 503 });
   }
 }
+

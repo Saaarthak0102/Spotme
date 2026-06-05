@@ -13,24 +13,24 @@ export async function generateMetadata({
 
   if (!event) {
     return {
-      title: "Event Not Found | Revela",
+      title: "Event Not Found | Spotme",
     };
   }
 
   const images = event.cover_url ? [event.cover_url] : ["/opengraph-image.png"];
 
   return {
-    title: `${event.name} | Revela`,
-    description: `Join ${event.name} on Revela. View photos and get instant access to digital keepsakes using AI face matching.`,
+    title: `${event.name} | Spotme`,
+    description: `Join ${event.name} on Spotme. View photos and get instant access to digital keepsakes using AI face matching.`,
     openGraph: {
-      title: `${event.name} | Revela`,
-      description: `Join ${event.name} on Revela. View photos and get instant access to digital keepsakes using AI face matching.`,
+      title: `${event.name} | Spotme`,
+      description: `Join ${event.name} on Spotme. View photos and get instant access to digital keepsakes using AI face matching.`,
       images: images,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${event.name} | Revela`,
-      description: `Join ${event.name} on Revela. View photos and get instant access to digital keepsakes using AI face matching.`,
+      title: `${event.name} | Spotme`,
+      description: `Join ${event.name} on Spotme. View photos and get instant access to digital keepsakes using AI face matching.`,
       images: images,
     },
   };
@@ -56,7 +56,7 @@ export default async function GuestLayout({
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#C46A4A] text-white shadow-sm transition-transform group-hover:scale-105">
             <span className="material-symbols-outlined text-[16px]">camera</span>
           </span>
-          <span className="text-base font-semibold tracking-[-0.03em] text-[#2D2D2D]">Revela</span>
+          <span className="text-base font-semibold tracking-[-0.03em] text-[#2D2D2D]">Spotme</span>
         </Link>
       </header>
 

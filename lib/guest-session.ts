@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
-const SECRET = process.env.GUEST_SESSION_SECRET || "spotme_guest_session_secret_default_32chars_revela";
+const SECRET = process.env.GUEST_SESSION_SECRET || "spotme_guest_session_secret_default_32chars_spotme";
 
 // 7 days session duration in milliseconds
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;

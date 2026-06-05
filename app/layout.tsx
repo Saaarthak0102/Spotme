@@ -22,27 +22,27 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
-  title: "Revela | Digital Keepsakes for Your Most Cherished Moments",
-  description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Revela bridges the gap between the camera and the guest.",
+  title: "Spotme | Digital Keepsakes for Your Most Cherished Moments",
+  description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Spotme bridges the gap between the camera and the guest.",
   openGraph: {
-    title: "Revela | Digital Keepsakes for Your Most Cherished Moments",
-    description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Revela bridges the gap between the camera and the guest.",
+    title: "Spotme | Digital Keepsakes for Your Most Cherished Moments",
+    description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Spotme bridges the gap between the camera and the guest.",
     type: "website",
     locale: "en_US",
-    siteName: "Revela",
+    siteName: "Spotme",
     images: [
       {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Revela - Digital Keepsakes",
+        alt: "Spotme - Digital Keepsakes",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Revela | Digital Keepsakes for Your Most Cherished Moments",
-    description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Revela bridges the gap between the camera and the guest.",
+    title: "Spotme | Digital Keepsakes for Your Most Cherished Moments",
+    description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Spotme bridges the gap between the camera and the guest.",
     images: ["/opengraph-image.png"],
   },
 };

@@ -15,7 +15,7 @@ const PERSONAL_PLANS = [
     price: "₹0",
     period: "forever free",
     badge: null,
-    desc: "Perfect for trying out Revela at your first event.",
+    desc: "Perfect for trying out Spotme at your first event.",
     features: [
       "1 Active Event",
       "10 GB Cloud Storage",
@@ -103,7 +103,7 @@ const FAQS = [
   {
     question: "How does AI photo matching work?",
     answer:
-      "Guests scan the event QR code, upload a selfie, and Revela's AI (InsightFace ArcFace) automatically finds all event photos featuring their face — with no manual tagging needed.",
+      "Guests scan the event QR code, upload a selfie, and Spotme's AI (InsightFace ArcFace) automatically finds all event photos featuring their face — with no manual tagging needed.",
   },
   {
     question: "What is Privacy Mode?",
@@ -469,7 +469,7 @@ export default function Pricing() {
               Ready to transform your events?
             </h2>
             <p className="text-on-primary/80 mb-8 text-sm md:text-base">
-              Join photographers across India using Revela to deliver stunning AI-powered galleries.
+              Join photographers across India using Spotme to deliver stunning AI-powered galleries.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Link

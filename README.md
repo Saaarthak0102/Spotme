@@ -22,7 +22,7 @@ The product is optimized for:
 # Final MVP Folder Structure
 
 ```text
-Revela/
+Spotme/
 │
 ├── app/
 │   │
