@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useRef, FormEvent } from "react";
 import Header from "@/components/landing/navbar";
 import Footer from "@/components/landing/footer";
 import MobileNav from "@/components/landing/mobile-nav";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function todayISODate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
 
 export default function Inquire() {
   const [name, setName] = useState("");
@@ -17,10 +27,90 @@ export default function Inquire() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    phone?: string;
+    date?: string;
+    location?: string;
+    story?: string;
+  }>({});
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  const storyRef = useRef<HTMLTextAreaElement>(null);
+
+  const focusFirstError = (errs: typeof errors) => {
+    if (errs.name && nameRef.current) {
+      nameRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameRef.current.focus();
+    } else if (errs.email && emailRef.current) {
+      emailRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      emailRef.current.focus();
+    } else if (errs.phone && phoneRef.current) {
+      phoneRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      phoneRef.current.focus();
+    } else if (errs.date && dateRef.current) {
+      dateRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      dateRef.current.focus();
+    } else if (errs.location && locationRef.current) {
+      locationRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      locationRef.current.focus();
+    } else if (errs.story && storyRef.current) {
+      storyRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      storyRef.current.focus();
+    }
+  };
+
+  const clearError = (field: keyof typeof errors) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name || !email) return;
+    const newErrors: typeof errors = {};
+
+    const trimmedName = name.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      newErrors.name = "Please enter your name.";
+    }
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      newErrors.email = "Email is required.";
+    } else if (!EMAIL_RE.test(trimmedEmail)) {
+      newErrors.email = "Please enter a valid email address.";
+    }
+
+    if (phone && phone.replace(/\D/g, "").length < 7) {
+      newErrors.phone = "Please enter a valid phone number.";
+    }
+
+    if (date) {
+      const today = todayISODate();
+      if (date < today) {
+        newErrors.date = "Please select a future date.";
+      }
+    }
+
+    setErrors(newErrors);
+    setSubmitError(null);
+
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstError(newErrors);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -46,7 +136,7 @@ export default function Inquire() {
       setIsSubmitted(true);
     } catch (err) {
       console.error("Failed to submit inquiry:", err);
-      alert("Inquiry submission failed. Please try again.");
+      setSubmitError("Inquiry submission failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -87,7 +177,7 @@ export default function Inquire() {
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-8">
+                  <form onSubmit={handleSubmit} className="space-y-8" noValidate>
                     <h2 className="font-serif text-2xl font-bold text-on-surface mb-6 border-b border-outline-variant/10 pb-4">
                       Event Details
                     </h2>
@@ -96,26 +186,35 @@ export default function Inquire() {
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Name</label>
                         <input
+                          ref={nameRef}
                           required
                           type="text"
                           maxLength={200}
+                          minLength={2}
                           value={name}
-                          onChange={(e) => setName(e.target.value)}
+                          onChange={(e) => { setName(e.target.value); clearError("name"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="Your full name"
                         />
+                        {errors.name && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.name}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Email</label>
                         <input
+                          ref={emailRef}
                           required
                           type="email"
                           maxLength={320}
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => { setEmail(e.target.value); clearError("email"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="hello@domain.com"
                         />
+                        {errors.email && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.email}</p>
+                        )}
                       </div>
                     </div>
 
@@ -123,23 +222,32 @@ export default function Inquire() {
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Phone Number</label>
                         <input
+                          ref={phoneRef}
                           type="tel"
                           inputMode="numeric"
                           maxLength={12}
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                          onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 12)); clearError("phone"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="+91 xxxxxxxx"
                         />
+                        {errors.phone && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.phone}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Event Date</label>
                         <input
+                          ref={dateRef}
                           type="date"
                           value={date}
-                          onChange={(e) => setDate(e.target.value)}
+                          min={todayISODate()}
+                          onChange={(e) => { setDate(e.target.value); clearError("date"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                         />
+                        {errors.date && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.date}</p>
+                        )}
                       </div>
                     </div>
 
@@ -147,13 +255,17 @@ export default function Inquire() {
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Event Location</label>
                         <input
+                          ref={locationRef}
                           type="text"
                           maxLength={200}
                           value={location}
-                          onChange={(e) => setLocation(e.target.value)}
+                          onChange={(e) => { setLocation(e.target.value); clearError("location"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="City, Country"
                         />
+                        {errors.location && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.location}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Event Type</label>
@@ -200,14 +312,26 @@ export default function Inquire() {
                         Share your event story
                       </label>
                       <textarea
+                        ref={storyRef}
                         maxLength={2000}
                         value={story}
-                        onChange={(e) => setStory(e.target.value)}
+                        onChange={(e) => { setStory(e.target.value); clearError("story"); }}
                         className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none resize-none text-sm font-sans"
                         placeholder="Tell us about the atmosphere, the photography style, and the keepsakes you value most..."
                         rows={5}
                       ></textarea>
+                      {story.length > 0 && (
+                        <p className="text-xs text-on-surface-variant px-1 font-sans">
+                          {story.length} / 2000
+                        </p>
+                      )}
                     </div>
+
+                    {submitError && (
+                      <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 font-medium">
+                        {submitError}
+                      </div>
+                    )}
 
                     <button
                       disabled={isSubmitting}
@@ -217,7 +341,7 @@ export default function Inquire() {
                       {isSubmitting ? (
                         <>
                           <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
-                          Submitting...
+                          Sending…
                         </>
                       ) : (
                         <>
