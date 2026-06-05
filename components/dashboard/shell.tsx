@@ -6,6 +6,16 @@ import { type ReactNode, useState, useEffect, useCallback, useRef, Suspense } fr
 import type { Event as EventRecord } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function todayISODate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
 type MainSection = "Dashboard" | "Events" | "Storage" | "Settings";
 
 const mainNavigation: Array<{ label: MainSection; href: string; icon: string }> = [
@@ -630,6 +640,12 @@ function NavItem({
 export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const venueRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const adminNameRef = useRef<HTMLInputElement>(null);
+  const adminPhoneRef = useRef<HTMLInputElement>(null);
+  const adminEmailRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     venue: "",
@@ -647,6 +663,15 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [errors, setErrors] = useState<{
+    name?: string;
+    venue?: string;
+    date?: string;
+    adminName?: string;
+    adminPhone?: string;
+    adminEmail?: string;
+  }>({});
+
   useEffect(() => {
     if (isOpen) {
       const searchName = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("search") || "" : "";
@@ -659,6 +684,38 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  const focusFirstError = (errs: typeof errors) => {
+    if (errs.name && nameRef.current) {
+      nameRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameRef.current.focus();
+    } else if (errs.venue && venueRef.current) {
+      venueRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      venueRef.current.focus();
+    } else if (errs.date && dateRef.current) {
+      dateRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      dateRef.current.focus();
+    } else if (errs.adminName && adminNameRef.current) {
+      adminNameRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      adminNameRef.current.focus();
+    } else if (errs.adminPhone && adminPhoneRef.current) {
+      adminPhoneRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      adminPhoneRef.current.focus();
+    } else if (errs.adminEmail && adminEmailRef.current) {
+      adminEmailRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      adminEmailRef.current.focus();
+    }
+  };
+
+  const clearError = (field: keyof typeof errors) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -690,8 +747,52 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    const newErrors: typeof errors = {};
+
+    const trimmedName = formData.name.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      newErrors.name = "Please enter an event name.";
+    }
+
+    const trimmedVenue = formData.venue.trim();
+    if (!trimmedVenue || trimmedVenue.length < 2) {
+      newErrors.venue = "Please enter a venue.";
+    }
+
+    if (!formData.date) {
+      newErrors.date = "Please select a future date.";
+    } else {
+      const today = todayISODate();
+      if (formData.date < today) {
+        newErrors.date = "Please select a future date.";
+      }
+    }
+
+    const trimmedAdminName = formData.adminName.trim();
+    if (!trimmedAdminName || trimmedAdminName.length < 2) {
+      newErrors.adminName = "Please enter a contact name.";
+    }
+
+    if (formData.adminPhone.replace(/\D/g, "").length !== 10) {
+      newErrors.adminPhone = "Please enter a valid 10-digit phone number.";
+    }
+
+    const trimmedAdminEmail = formData.adminEmail.trim();
+    if (!trimmedAdminEmail) {
+      newErrors.adminEmail = "Email is required.";
+    } else if (!EMAIL_RE.test(trimmedAdminEmail)) {
+      newErrors.adminEmail = "Please enter a valid email address.";
+    }
+
+    setErrors(newErrors);
     setError(null);
+
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstError(newErrors);
+      return;
+    }
+
+    setLoading(true);
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -792,8 +893,8 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
         <h2 className="mt-2 text-xl font-bold tracking-tight text-[#2D2D2D] sm:text-2xl">Create event workspace</h2>
         <p className="mt-1 text-xs text-[#827970]">Configure your new event space. All entries will be styled to your brand guidelines.</p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+
           {/* Cover Image Uploader */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-[#766D66] mb-2">Cover Image</label>
@@ -862,13 +963,18 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#766D66]">Event Name</label>
               <input
+                ref={nameRef}
                 required
                 maxLength={200}
+                minLength={2}
                 placeholder="e.g. Villa d'Este Celebration"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); clearError("name"); }}
                 className="mt-2 h-11 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50 focus:shadow-[0_0_0_3px_rgba(214,125,92,0.08)]"
               />
+              {errors.name && (
+                <p className="mt-1 text-[10px] font-semibold text-red-600">{errors.name}</p>
+              )}
             </div>
 
             <div>
@@ -891,23 +997,33 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#766D66]">Venue / Location</label>
               <input
+                ref={venueRef}
                 required
                 maxLength={200}
+                minLength={2}
                 placeholder="e.g. Lake Como, Italy"
                 value={formData.venue}
-                onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, venue: e.target.value }); clearError("venue"); }}
                 className="mt-2 h-11 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50 focus:shadow-[0_0_0_3px_rgba(214,125,92,0.08)]"
               />
+              {errors.venue && (
+                <p className="mt-1 text-[10px] font-semibold text-red-600">{errors.venue}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#766D66]">Event Date</label>
               <input
+                ref={dateRef}
                 required
                 type="date"
                 value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                min={todayISODate()}
+                onChange={(e) => { setFormData({ ...formData, date: e.target.value }); clearError("date"); }}
                 className="mt-2 h-11 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50 focus:shadow-[0_0_0_3px_rgba(214,125,92,0.08)]"
               />
+              {errors.date && (
+                <p className="mt-1 text-[10px] font-semibold text-red-600">{errors.date}</p>
+              )}
             </div>
           </div>
 
@@ -918,39 +1034,52 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Name</label>
                 <input
+                  ref={adminNameRef}
                   required
                   maxLength={200}
+                  minLength={2}
                   placeholder="e.g. Sarah Jenkins"
                   value={formData.adminName}
-                  onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                  onChange={(e) => { setFormData({ ...formData, adminName: e.target.value }); clearError("adminName"); }}
                   className="mt-1.5 h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50"
                 />
+                {errors.adminName && (
+                  <p className="mt-1 text-[10px] font-semibold text-red-600">{errors.adminName}</p>
+                )}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Phone Number</label>
                 <input
+                  ref={adminPhoneRef}
                   required
                   type="tel"
                   inputMode="numeric"
                   maxLength={12}
                   placeholder="e.g. +1 (555) 019-2831"
                   value={formData.adminPhone}
-                  onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value.replace(/\D/g, "").slice(0, 12) })}
+                  onChange={(e) => { setFormData({ ...formData, adminPhone: e.target.value.replace(/\D/g, "").slice(0, 12) }); clearError("adminPhone"); }}
                   className="mt-1.5 h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50"
                 />
+                {errors.adminPhone && (
+                  <p className="mt-1 text-[10px] font-semibold text-red-600">{errors.adminPhone}</p>
+                )}
               </div>
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Email ID</label>
                   <input
+                    ref={adminEmailRef}
                     required
                     type="email"
                     maxLength={320}
                     placeholder="e.g. sarah@events.com"
                     value={formData.adminEmail}
-                    onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                    onChange={(e) => { setFormData({ ...formData, adminEmail: e.target.value }); clearError("adminEmail"); }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50"
                   />
+                  {errors.adminEmail && (
+                    <p className="mt-1 text-[10px] font-semibold text-red-600">{errors.adminEmail}</p>
+                  )}
                 </div>
               </div>
             </div>

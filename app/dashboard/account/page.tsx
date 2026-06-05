@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { DashboardShell, PageHeading } from "@/components/dashboard/shell";
 import { createClient } from "@/lib/supabase/client";
+import { validatePassword } from "@/lib/auth-validate";
 
 
 
@@ -310,27 +311,58 @@ function ChangePasswordModal({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [errors, setErrors] = useState<{
+    newPassword?: string;
+    confirmPassword?: string;
+  }>({});
+
+  const newPasswordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
+  const focusFirstError = (errs: typeof errors) => {
+    if (errs.newPassword && newPasswordRef.current) {
+      newPasswordRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      newPasswordRef.current.focus();
+    } else if (errs.confirmPassword && confirmPasswordRef.current) {
+      confirmPasswordRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      confirmPasswordRef.current.focus();
+    }
+  };
+
+  const clearError = (field: keyof typeof errors) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword) {
-      setError("Password cannot be empty.");
-      return;
+    const newErrors: typeof errors = {};
+
+    const passwordErr = validatePassword(newPassword);
+    if (passwordErr) {
+      newErrors.newPassword = passwordErr;
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match.";
     }
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+
+    setErrors(newErrors);
+    setSubmitError(null);
+
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstError(newErrors);
       return;
     }
 
     setLoading(true);
-    setError(null);
     try {
       const supabase = createClient();
       const { error: updateError } = await supabase.auth.updateUser({
@@ -341,13 +373,12 @@ function ChangePasswordModal({
         throw new Error(updateError.message);
       }
 
-      alert("Password updated successfully!");
       setNewPassword("");
       setConfirmPassword("");
       setShowPassword(false);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to update password.");
+      setSubmitError(err.message || "Failed to update password.");
     } finally {
       setLoading(false);
     }
@@ -365,16 +396,17 @@ function ChangePasswordModal({
         <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#2D2D2D]">Change password</h2>
         <p className="mt-2 text-sm text-[#827970]">Update your account password below.</p>
 
-        <form onSubmit={handleUpdatePassword} className="mt-6 space-y-4">
+        <form onSubmit={handleUpdatePassword} className="mt-6 space-y-4" noValidate>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[#574F49]">New Password</label>
             <div className="relative">
               <input
+                ref={newPasswordRef}
                 type={showPassword ? "text" : "password"}
                 minLength={8}
                 maxLength={128}
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => { setNewPassword(e.target.value); clearError("newPassword"); }}
                 placeholder="Minimum 6 characters"
                 className="w-full rounded-xl border border-[#2D2D2D]/8 bg-white/70 pl-3.5 pr-10 py-2.5 text-xs text-[#2D2D2D] focus:border-[#D67D5C]/40 focus:ring-1 focus:ring-[#D67D5C]/40 outline-none transition"
                 required
@@ -390,16 +422,22 @@ function ChangePasswordModal({
               </button>
             </div>
             <p className="text-[10px] text-[#827970]">Minimum 8 characters</p>
+            {errors.newPassword && (
+              <p className="text-[10px] font-semibold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+                {errors.newPassword}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[#574F49]">Confirm New Password</label>
             <div className="relative">
               <input
+                ref={confirmPasswordRef}
                 type={showPassword ? "text" : "password"}
                 maxLength={128}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => { setConfirmPassword(e.target.value); clearError("confirmPassword"); }}
                 placeholder="Re-enter password"
                 className="w-full rounded-xl border border-[#2D2D2D]/8 bg-white/70 pl-3.5 pr-10 py-2.5 text-xs text-[#2D2D2D] focus:border-[#D67D5C]/40 focus:ring-1 focus:ring-[#D67D5C]/40 outline-none transition"
                 required
@@ -414,18 +452,25 @@ function ChangePasswordModal({
                 </span>
               </button>
             </div>
+            {errors.confirmPassword && (
+              <p className="text-[10px] font-semibold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+                {errors.confirmPassword}
+              </p>
+            )}
           </div>
 
-          {error && (
+          {submitError && (
             <p className="text-xs font-semibold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
-              {error}
+              {submitError}
             </p>
           )}
 
           <div className="mt-8 flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-[#2D2D2D]/8 bg-white py-3 text-sm font-semibold text-[#574F49] hover:bg-[#FDF8F1] transition">Cancel</button>
             <button type="submit" disabled={loading} className="flex-1 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] py-3 text-sm font-semibold text-white shadow-md hover:-translate-y-0.5 transition active:scale-[0.98] disabled:opacity-50">
-              {loading ? "Updating..." : "Update Password"}
+              {loading ? (
+                <><span className="material-symbols-outlined text-[14px] animate-spin inline-block mr-1">sync</span> Saving…</>
+              ) : "Update Password"}
             </button>
           </div>
         </form>

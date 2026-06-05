@@ -1,9 +1,19 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, useRef, FormEvent } from "react";
 import Header from "@/components/landing/navbar";
 import Footer from "@/components/landing/footer";
 import MobileNav from "@/components/landing/mobile-nav";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function todayISODate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
 
 export default function Contact() {
   const [name, setName] = useState("");
@@ -14,8 +24,21 @@ export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    date?: string;
+    location?: string;
+    story?: string;
+  }>({});
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  const storyRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
-    // Setup Scroll Reveal Observer
     const observerOptions = {
       threshold: 0.1,
     };
@@ -40,15 +63,96 @@ export default function Contact() {
     };
   }, []);
 
+  const validate = (): boolean => {
+    const newErrors: typeof errors = {};
+
+    const trimmedName = name.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      newErrors.name = "Please enter your name.";
+    }
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      newErrors.email = "Email is required.";
+    } else if (!EMAIL_RE.test(trimmedEmail)) {
+      newErrors.email = "Please enter a valid email address.";
+    }
+
+    if (date) {
+      const today = todayISODate();
+      if (date < today) {
+        newErrors.date = "Please select a future date.";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const focusFirstError = (errs: typeof errors) => {
+    if (errs.name && nameRef.current) {
+      nameRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameRef.current.focus();
+    } else if (errs.email && emailRef.current) {
+      emailRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      emailRef.current.focus();
+    } else if (errs.date && dateRef.current) {
+      dateRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      dateRef.current.focus();
+    } else if (errs.location && locationRef.current) {
+      locationRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      locationRef.current.focus();
+    } else if (errs.story && storyRef.current) {
+      storyRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      storyRef.current.focus();
+    }
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!name || !email) return;
+    const newErrors: typeof errors = {};
+
+    const trimmedName = name.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      newErrors.name = "Please enter your name.";
+    }
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      newErrors.email = "Email is required.";
+    } else if (!EMAIL_RE.test(trimmedEmail)) {
+      newErrors.email = "Please enter a valid email address.";
+    }
+
+    if (date) {
+      const today = todayISODate();
+      if (date < today) {
+        newErrors.date = "Please select a future date.";
+      }
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstError(newErrors);
+      return;
+    }
 
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSubmitted(true);
     }, 1500);
+  };
+
+  const clearError = (field: keyof typeof errors) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
   return (
@@ -76,7 +180,7 @@ export default function Contact() {
                 <span className="italic font-light">Intimate Milestones</span>
               </h1>
               <p className="font-sans text-base md:text-lg opacity-90 max-w-lg leading-relaxed">
-                We believe every legacy starts with a conversation. Share your vision with us, and let’s craft something timeless together.
+                We believe every legacy starts with a conversation. Share your vision with us, and let's craft something timeless together.
               </p>
             </div>
           </div>
@@ -94,7 +198,7 @@ export default function Contact() {
                   Tell us about your upcoming event or milestone.
                 </p>
                 <p className="text-on-surface-variant mb-10 font-sans text-sm">
-                  <span className="font-semibold text-primary">Custom pricing:</span> All of our services are tailored to your unique story and needs. For custom pricing based on your requirements and vision, please fill out the form below or reach out directly—we&apos;ll provide a detailed quote after discussing your event.
+                  <span className="font-semibold text-primary">Custom pricing:</span> All of our services are tailored to your unique story and needs. For custom pricing based on your requirements and vision, please fill out the form below or reach out directly—we'll provide a detailed quote after discussing your event.
                 </p>
 
                 {isSubmitted ? (
@@ -106,53 +210,71 @@ export default function Contact() {
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-8">
+                  <form onSubmit={handleSubmit} className="space-y-8" noValidate>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Name</label>
                         <input
+                          ref={nameRef}
                           required
                           maxLength={200}
+                          minLength={2}
                           value={name}
-                          onChange={(e) => setName(e.target.value)}
+                          onChange={(e) => { setName(e.target.value); clearError("name"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="Your full name"
                           type="text"
                         />
+                        {errors.name && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.name}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Email</label>
                         <input
+                          ref={emailRef}
                           required
                           maxLength={320}
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => { setEmail(e.target.value); clearError("email"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="hello@domain.com"
                           type="email"
                         />
+                        {errors.email && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.email}</p>
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Event Date</label>
                         <input
+                          ref={dateRef}
                           value={date}
-                          onChange={(e) => setDate(e.target.value)}
+                          min={todayISODate()}
+                          onChange={(e) => { setDate(e.target.value); clearError("date"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           type="date"
                         />
+                        {errors.date && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.date}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Location</label>
                         <input
+                          ref={locationRef}
                           maxLength={200}
                           value={location}
-                          onChange={(e) => setLocation(e.target.value)}
+                          onChange={(e) => { setLocation(e.target.value); clearError("location"); }}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="City, Country"
                           type="text"
                         />
+                        {errors.location && (
+                          <p className="text-xs text-red-600 font-medium px-1">{errors.location}</p>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -160,23 +282,32 @@ export default function Contact() {
                         Tell us your story
                       </label>
                       <textarea
+                        ref={storyRef}
                         maxLength={2000}
                         value={story}
-                        onChange={(e) => setStory(e.target.value)}
+                        onChange={(e) => { setStory(e.target.value); clearError("story"); }}
                         className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none resize-none text-sm font-sans"
                         placeholder="Share your vision, the mood, and the moments you want to capture..."
                         rows={5}
                       ></textarea>
+                      {story.length > 0 && (
+                        <p className="text-xs text-on-surface-variant px-1 font-sans">
+                          {story.length} / 2000
+                        </p>
+                      )}
+                      {errors.story && (
+                        <p className="text-xs text-red-600 font-medium px-1">{errors.story}</p>
+                      )}
                     </div>
                     <button
                       disabled={isSubmitting}
-                      className="w-full md:w-auto bg-primary text-on-primary px-12 py-5 rounded-xl font-sans font-semibold text-sm quint-ease hover:scale-105 active:scale-95 shadow-md flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      className="w-full md:w-auto bg-primary text-on-primary px-12 py-5 rounded-xl font-sans font-semibold text-sm quint-ease hover:scale-105 active:scale-95 shadow-md flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 cursor-pointer"
                       type="submit"
                     >
                       {isSubmitting ? (
                         <>
                           <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>
-                          Sending...
+                          Sending…
                         </>
                       ) : (
                         <>
