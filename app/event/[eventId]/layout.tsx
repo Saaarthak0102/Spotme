@@ -1,5 +1,40 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SessionInitializer } from "./session-initializer";
+import { getGuestEvent } from "@/lib/guest-data-server";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}): Promise<Metadata> {
+  const { eventId } = await params;
+  const event = await getGuestEvent(eventId);
+
+  if (!event) {
+    return {
+      title: "Event Not Found | Revela",
+    };
+  }
+
+  const images = event.cover_url ? [event.cover_url] : ["/opengraph-image.png"];
+
+  return {
+    title: `${event.name} | Revela`,
+    description: `Join ${event.name} on Revela. View photos and get instant access to digital keepsakes using AI face matching.`,
+    openGraph: {
+      title: `${event.name} | Revela`,
+      description: `Join ${event.name} on Revela. View photos and get instant access to digital keepsakes using AI face matching.`,
+      images: images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${event.name} | Revela`,
+      description: `Join ${event.name} on Revela. View photos and get instant access to digital keepsakes using AI face matching.`,
+      images: images,
+    },
+  };
+}
 
 export default async function GuestLayout({
   children,

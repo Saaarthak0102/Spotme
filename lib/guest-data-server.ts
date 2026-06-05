@@ -1,7 +1,4 @@
-// ============================================================
-// guest-data-server.ts — Server-only Supabase data access
-// Only import this in Server Components or API Routes
-// ============================================================
+import { cache } from "react";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Event, EventPhoto } from "@/types/database";
 import { hasEventSession } from "@/lib/guest-session";
@@ -11,8 +8,9 @@ export type { Event, EventPhoto };
 /**
  * Fetch a single active event by ID for guest display.
  * Server-safe: use this in Server Components.
+ * Cached to prevent duplicate database calls between generateMetadata and page rendering.
  */
-export async function getGuestEvent(eventId: string): Promise<Event | null> {
+export const getGuestEvent = cache(async (eventId: string): Promise<Event | null> => {
   const supabase = await createServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,7 +28,7 @@ export async function getGuestEvent(eventId: string): Promise<Event | null> {
   }
 
   return data as Event;
-}
+});
 
 /**
  * Fetch all photos for a public event gallery.
