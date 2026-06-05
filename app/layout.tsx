@@ -14,7 +14,14 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+  ? process.env.NEXT_PUBLIC_APP_URL
+  : process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://spotme.revela.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "Revela | Digital Keepsakes for Your Most Cherished Moments",
   description: "Capture every smile and deliver it instantly with the warmth and care it deserves. Revela bridges the gap between the camera and the guest.",
 };
