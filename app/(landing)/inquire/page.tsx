@@ -98,6 +98,7 @@ export default function Inquire() {
                         <input
                           required
                           type="text"
+                          maxLength={200}
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
@@ -109,6 +110,7 @@ export default function Inquire() {
                         <input
                           required
                           type="email"
+                          maxLength={320}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
@@ -122,8 +124,10 @@ export default function Inquire() {
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Phone Number</label>
                         <input
                           type="tel"
+                          inputMode="numeric"
+                          maxLength={12}
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
+                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 12))}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
                           placeholder="+91 xxxxxxxx"
                         />
@@ -131,11 +135,10 @@ export default function Inquire() {
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Event Date</label>
                         <input
-                          type="text"
+                          type="date"
                           value={date}
                           onChange={(e) => setDate(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
-                          placeholder="MM / DD / YYYY"
                         />
                       </div>
                     </div>
@@ -145,6 +148,7 @@ export default function Inquire() {
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Event Location</label>
                         <input
                           type="text"
+                          maxLength={200}
                           value={location}
                           onChange={(e) => setLocation(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
@@ -196,6 +200,7 @@ export default function Inquire() {
                         Share your event story
                       </label>
                       <textarea
+                        maxLength={2000}
                         value={story}
                         onChange={(e) => setStory(e.target.value)}
                         className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none resize-none text-sm font-sans"

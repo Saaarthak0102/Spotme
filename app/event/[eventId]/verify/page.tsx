@@ -95,6 +95,7 @@ export default function VerifyPage() {
                 <input
                   required
                   type="text"
+                  maxLength={100}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Priya Sharma"
@@ -126,6 +127,7 @@ export default function VerifyPage() {
                   <input
                     required
                     type="tel"
+                    maxLength={12}
                     value={phone}
                     onChange={handlePhoneChange}
                     placeholder="9876543210"

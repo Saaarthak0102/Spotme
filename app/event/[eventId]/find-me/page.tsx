@@ -17,11 +17,21 @@ export default function FindMePage() {
   const [processingDots, setProcessingDots] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
   const [guestId, setGuestId] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(`guest_id_${eventId}`);
     setGuestId(stored);
   }, [eventId]);
+
+  const validateFile = (file: File): string | null => {
+    if (file.size > 10 * 1024 * 1024) return "Image must be under 10 MB.";
+    if (!["image/jpeg","image/png","image/webp","image/heic"].includes(file.type)) {
+      return "Please upload a JPEG, PNG, WebP, or HEIC image.";
+    }
+    return null;
+  };
 
   const handleFileSelect = async (file: File) => {
     if (!file) return;
@@ -127,7 +137,17 @@ export default function FindMePage() {
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) handleFileSelect(file);
+            if (file) {
+              const err = validateFile(file);
+              if (err) {
+                setCameraError(err);
+                if (cameraInputRef.current) cameraInputRef.current.value = "";
+                e.target.value = "";
+                return;
+              }
+              setCameraError(null);
+              handleFileSelect(file);
+            }
             e.target.value = "";
           }}
         />
@@ -140,7 +160,17 @@ export default function FindMePage() {
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) handleFileSelect(file);
+            if (file) {
+              const err = validateFile(file);
+              if (err) {
+                setGalleryError(err);
+                if (galleryInputRef.current) galleryInputRef.current.value = "";
+                e.target.value = "";
+                return;
+              }
+              setGalleryError(null);
+              handleFileSelect(file);
+            }
             e.target.value = "";
           }}
         />
@@ -190,6 +220,12 @@ export default function FindMePage() {
               <span className="material-symbols-outlined text-[18px]">photo_library</span>
               Choose from gallery
             </button>
+
+            {(cameraError || galleryError) && (
+              <p className="mt-3 text-xs font-semibold text-red-600">
+                {cameraError || galleryError}
+              </p>
+            )}
 
             <Link
               href={`/event/${eventId}/gallery`}

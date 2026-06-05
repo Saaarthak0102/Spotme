@@ -234,30 +234,6 @@ export default function Home() {
           <div className="absolute bottom-1/4 right-1/10 w-96 h-96 bg-secondary-container/10 rounded-full blur-3xl float-anim" style={{ animationDelay: "2s" }}></div>
 
           <div className="relative z-10 max-w-container-max mx-auto px-margin-desktop w-full py-16 flex flex-col items-center text-center">
-            {/* Overlapping User Avatars Badge */}
-            <div className="flex items-center gap-3 bg-surface-container-low/80 backdrop-blur-md px-4 py-2 rounded-full border border-outline-variant/20 shadow-sm mb-8 stagger-in">
-              <div className="flex -space-x-3">
-                <img
-                  className="w-7 h-7 rounded-full border-2 border-surface object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaWBp81P6KWCBcLuD508q4ur-qKnkVwd6_NqcJcqowCF7cwZHPuubhiFTqlrWGOuqY6JVbAe9XZJL6M6UxIJchZWgmA0zKblathKIpF2iXRVs3LInXBmGjxII6sdK1K4gJMMFiZnkp8nQVWqhrQSu786YxsHMOE6nORqfsp_rznt6AYyeC6OM1WkCzWM3U-ruW1EV8deFKnQqLF1OKGYYZNheRG1kK2EQPQws1hCjChUf6-Fw6qV479yoCj6W7MY5BFdKqNTmBew"
-                  alt="Julian Vance profile"
-                />
-                <img
-                  className="w-7 h-7 rounded-full border-2 border-surface object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVbelXKMKtmP55WzjDDQlzdoqv3-UDUFCDNfAIyK4Qcbb7MELJhxrke5lwvlghCUjthPUBg41HIGmhcWQsPcitdIeN8pPTbhqGe077XstWNNoZe1fbANNYymN0TSG0ctOXln06PEwmNUH6LRTuBxQZxnrVMy0fo0DR4EnaO-37AdlHInNXdS5x_-gMytaMjzj70qZQbmflIMPPELpNRdgxUN-374J24EWJe8ZgyLc9nk0Nas9onVMPwk-xqTHdaIJqm_hLBL1UeQ"
-                  alt="Elena Rossi profile"
-                />
-                <img
-                  className="w-7 h-7 rounded-full border-2 border-surface object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-lFjhS-Z4spcxekB7LTFAZ0KLKVWkMWL8BVeUpYXIU4ZEHoQdq35ltjR17pvUYjVTWa6etrxP5CoP1rZj-pj6eCQ--B8aA8EaRNmJHHn5gc5YEiCm7b-rWQrdl3-uAFtKsaU9kY126Txt7QJpXVit9nSDvtrf5bMUy7SixQMy7Nfh6KliTDNNdsHl-GJnfcjld8bvk1hPN8unxDalJipuysILmaLbINvph-hhXS0x9XKGDhRrB0IfeaKyhRpUpFaxZsgXxM7CZA"
-                  alt="Client testimonial thumbnail"
-                />
-              </div>
-              <span className="text-xs font-semibold text-on-surface-variant font-sans">
-                Loved by 1M+ users
-              </span>
-            </div>
-
             {/* Dynamic Rotating Title */}
             <h1 className="font-serif text-5xl md:text-7xl font-bold tracking-tight text-on-surface leading-[1.15] mb-8 stagger-in max-w-4xl">
                Photo Sharing App <br />

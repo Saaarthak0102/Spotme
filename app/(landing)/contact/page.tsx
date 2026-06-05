@@ -112,6 +112,7 @@ export default function Contact() {
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Name</label>
                         <input
                           required
+                          maxLength={200}
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
@@ -123,6 +124,7 @@ export default function Contact() {
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Email</label>
                         <input
                           required
+                          maxLength={320}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
@@ -138,13 +140,13 @@ export default function Contact() {
                           value={date}
                           onChange={(e) => setDate(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
-                          placeholder="MM / DD / YYYY"
-                          type="text"
+                          type="date"
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="font-sans font-semibold text-xs text-on-surface-variant px-1">Location</label>
                         <input
+                          maxLength={200}
                           value={location}
                           onChange={(e) => setLocation(e.target.value)}
                           className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans"
@@ -158,6 +160,7 @@ export default function Contact() {
                         Tell us your story
                       </label>
                       <textarea
+                        maxLength={2000}
                         value={story}
                         onChange={(e) => setStory(e.target.value)}
                         className="w-full bg-surface-bright border-none ring-1 ring-outline-variant/30 rounded-xl px-6 py-4 focus:ring-2 focus:ring-primary quint-ease outline-none resize-none text-sm font-sans"
