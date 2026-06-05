@@ -371,6 +371,8 @@ function ChangePasswordModal({
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                minLength={8}
+                maxLength={128}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
@@ -387,6 +389,7 @@ function ChangePasswordModal({
                 </span>
               </button>
             </div>
+            <p className="text-[10px] text-[#827970]">Minimum 8 characters</p>
           </div>
 
           <div className="space-y-1.5">
@@ -394,6 +397,7 @@ function ChangePasswordModal({
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                maxLength={128}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter password"

@@ -641,6 +641,7 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFileError, setCoverFileError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -664,6 +665,17 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setCoverFileError("Image must be under 10 MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (!["image/jpeg","image/png","image/webp","image/heic"].includes(file.type)) {
+      setCoverFileError("Please upload a JPEG, PNG, WebP, or HEIC image.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setCoverFileError(null);
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
   };
@@ -672,6 +684,7 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
     e.stopPropagation();
     setCoverFile(null);
     setCoverPreview(null);
+    setCoverFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -838,6 +851,11 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
                 </div>
               )}
             </label>
+            {coverFileError && (
+              <p className="mt-1.5 text-[10px] font-semibold text-red-600">
+                {coverFileError}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -845,6 +863,7 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#766D66]">Event Name</label>
               <input
                 required
+                maxLength={200}
                 placeholder="e.g. Villa d'Este Celebration"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -873,6 +892,7 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#766D66]">Venue / Location</label>
               <input
                 required
+                maxLength={200}
                 placeholder="e.g. Lake Como, Italy"
                 value={formData.venue}
                 onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
@@ -899,6 +919,7 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
                 <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Name</label>
                 <input
                   required
+                  maxLength={200}
                   placeholder="e.g. Sarah Jenkins"
                   value={formData.adminName}
                   onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
@@ -906,22 +927,25 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Phone Number</label>
-                  <input
-                    required
-                    type="tel"
-                    placeholder="e.g. +1 (555) 019-2831"
-                    value={formData.adminPhone}
-                    onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value })}
-                    className="mt-1.5 h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50"
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Phone Number</label>
+                <input
+                  required
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={12}
+                  placeholder="e.g. +1 (555) 019-2831"
+                  value={formData.adminPhone}
+                  onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value.replace(/\D/g, "").slice(0, 12) })}
+                  className="mt-1.5 h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50"
+                />
+              </div>
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#766D66]">Admin Email ID</label>
                   <input
                     required
                     type="email"
+                    maxLength={320}
                     placeholder="e.g. sarah@events.com"
                     value={formData.adminEmail}
                     onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}

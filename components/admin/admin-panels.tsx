@@ -628,6 +628,7 @@ function PhotographerModal({
             <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Full Name</label>
             <input
               required
+              maxLength={200}
               value={form.full_name}
               onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
               className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
@@ -642,6 +643,7 @@ function PhotographerModal({
                 <input
                   required
                   type="email"
+                  maxLength={320}
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
@@ -653,6 +655,8 @@ function PhotographerModal({
                 <input
                   required
                   type="password"
+                  minLength={8}
+                  maxLength={128}
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                   className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
@@ -665,8 +669,11 @@ function PhotographerModal({
           <div>
             <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Phone <span className="text-stone-400">(optional)</span></label>
             <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={12}
               value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 12) }))}
               className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
               placeholder="+91 98765 43210"
             />
@@ -689,6 +696,7 @@ function PhotographerModal({
             <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Bio <span className="text-stone-400">(optional)</span></label>
             <textarea
               rows={2}
+              maxLength={500}
               value={form.bio}
               onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
               className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] resize-none"
