@@ -59,10 +59,6 @@ function ChangePlanModal({
   const [loading, setLoading] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
 
-  useEffect(() => {
-    setSelectedPlan(currentPlan);
-  }, [currentPlan, isOpen]);
-
   if (!isOpen) return null;
 
   // Load Razorpay Checkout dynamically
@@ -377,8 +373,9 @@ function ChangePasswordModal({
       setConfirmPassword("");
       setShowPassword(false);
       onClose();
-    } catch (err: any) {
-      setSubmitError(err.message || "Failed to update password.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update password.";
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }

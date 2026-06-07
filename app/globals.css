@@ -2,7 +2,7 @@
 
 @theme {
   --font-serif: var(--font-playfair), Georgia, serif;
-  --font-sans: var(--font-google-sans-flex), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
   
   --color-primary: #94492c;
   --color-on-primary: #ffffff;

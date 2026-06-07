@@ -8,6 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const cleanName = (name?: string | null) => {
+  if (!name) return "";
+  return name.includes("@") ? name.split("@")[0] : name;
+};
+
 function todayISODate() {
   const d = new Date();
   const y = d.getFullYear();
@@ -63,10 +68,12 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
     storageMaxGB: number;
   } | null>(null);
 
-  const initials = userName
-    ? userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "?";
-  const displayName = userName ?? "Photographer";
+  const rawAvatarName = userName || userProfile?.fullName || userProfile?.email;
+  const avatarName = cleanName(rawAvatarName);
+  const initials = avatarName
+    ? (avatarName.split(/\s+/).filter(Boolean)[0]?.[0]?.toUpperCase() || "")
+    : "";
+  const displayName = cleanName(userName) || "";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -113,7 +120,7 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
 
           setUserProfile({
             email: user.email || "",
-            fullName: profile?.full_name || userName || user.email || "Photographer",
+            fullName: profile?.full_name || userName || user.email || "",
             plan: profile?.plan || "free",
             storageUsedGB: parseFloat((totalBytes / (1024 * 1024 * 1024)).toFixed(2)),
             storageMaxGB: profile?.max_storage_gb || 10,
@@ -135,13 +142,15 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
       >
         <div className="relative shrink-0">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#F4A261] to-[#D67D5C] text-sm font-semibold text-white border border-white/20 shadow-md transition-transform duration-300 group-hover:scale-105">
-            {initials}
+            {initials || <span className="material-symbols-outlined text-[19px]">person</span>}
           </span>
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1 flex items-center justify-between">
             <div className="truncate">
-              <p className="truncate text-sm font-semibold text-white tracking-wide">{userProfile?.fullName || displayName}</p>
+              <p className="truncate text-sm font-semibold text-white tracking-wide">
+                {cleanName(userProfile?.fullName) || displayName || "User"}
+              </p>
               <p className="text-[10px] text-white/50 flex items-center gap-1.5 mt-0.5 uppercase tracking-wider font-medium">
                 {userProfile?.plan === "unlimited" ? "Unlimited Plan" : userProfile?.plan === "pro" ? "Pro Member" : "Free Tier"}
               </p>
@@ -157,11 +166,13 @@ function ProfileBlock({ collapsed, userName }: { collapsed?: boolean; userName?:
           <div className="px-2 py-1">
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D67D5C] text-xs font-semibold text-white border border-white/10">
-                {initials}
+                {initials || <span className="material-symbols-outlined text-[15px]">person</span>}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-white text-xs truncate">{userProfile?.fullName || displayName}</p>
-                <p className="text-[10px] text-white/50 truncate mt-0.5">{userProfile?.email || "photographer@spotme.com"}</p>
+                <p className="font-semibold text-white text-xs truncate">
+                  {cleanName(userProfile?.fullName) || displayName || "User"}
+                </p>
+                <p className="text-[10px] text-white/50 truncate mt-0.5">{userProfile?.email || ""}</p>
               </div>
             </div>
           </div>
@@ -195,10 +206,12 @@ function NavbarProfile({ userName }: { userName?: string }) {
     storageMaxGB: number;
   } | null>(null);
 
-  const initials = userName
-    ? userName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "?";
-  const displayName = userName ?? "Photographer";
+  const rawAvatarName = userName || userProfile?.fullName || userProfile?.email;
+  const avatarName = cleanName(rawAvatarName);
+  const initials = avatarName
+    ? (avatarName.split(/\s+/).filter(Boolean)[0]?.[0]?.toUpperCase() || "")
+    : "";
+  const displayName = cleanName(userName) || "";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -223,7 +236,15 @@ function NavbarProfile({ userName }: { userName?: string }) {
             .eq("id", user.id)
             .single();
 
-          let totalBytes = 0;
+          setUserProfile({
+            email: user.email || "",
+            fullName: profile?.full_name || userName || user.email || "",
+            plan: profile?.plan || "free",
+            storageUsedGB: 0,
+            storageMaxGB: profile?.max_storage_gb || 10,
+          });
+
+          // Fetch storage size asynchronously so it doesn't block page render/initial profile load
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: events } = await (supabase as any)
             .from("events")
@@ -237,17 +258,13 @@ function NavbarProfile({ userName }: { userName?: string }) {
               .select("file_size_bytes")
               .in("event_id", events.map((e: { id: string }) => e.id));
             if (photos) {
-              totalBytes = photos.reduce((acc: number, p: { file_size_bytes: number | null }) => acc + (p.file_size_bytes ?? 0), 0);
+              const totalBytes = photos.reduce((acc: number, p: { file_size_bytes: number | null }) => acc + (p.file_size_bytes ?? 0), 0);
+              setUserProfile((prev) => prev ? {
+                ...prev,
+                storageUsedGB: parseFloat((totalBytes / (1024 * 1024 * 1024)).toFixed(2)),
+              } : null);
             }
           }
-
-          setUserProfile({
-            email: user.email || "",
-            fullName: profile?.full_name || userName || user.email || "Photographer",
-            plan: profile?.plan || "free",
-            storageUsedGB: parseFloat((totalBytes / (1024 * 1024 * 1024)).toFixed(2)),
-            storageMaxGB: profile?.max_storage_gb || 10,
-          });
         }
       } catch (err) {
         console.error("Failed to load user info:", err);
@@ -262,6 +279,10 @@ function NavbarProfile({ userName }: { userName?: string }) {
     router.push("/login");
     router.refresh();
   };
+
+  if (!initials) {
+    return <div className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 hidden sm:block" />;
+  }
 
   return (
     <div ref={dropdownRef} className="relative hidden sm:block">
@@ -280,8 +301,10 @@ function NavbarProfile({ userName }: { userName?: string }) {
                 {initials}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-[#2D2D2D] text-xs truncate">{userProfile?.fullName || displayName}</p>
-                <p className="text-[10px] text-[#766D66] truncate mt-0.5">{userProfile?.email || "photographer@spotme.com"}</p>
+                <p className="font-bold text-[#2D2D2D] text-xs truncate">
+                  {cleanName(userProfile?.fullName) || displayName || "User"}
+                </p>
+                <p className="text-[10px] text-[#766D66] truncate mt-0.5">{userProfile?.email || ""}</p>
               </div>
             </div>
             <div className="mt-2.5 flex items-center justify-between">
@@ -485,8 +508,11 @@ function TopNavbar({
         if (!events || events.length === 0) return;
         const eventIds = events.map((e: { id: string }) => e.id);
 
-        // Fetch count of guests and photos created in last 24 hours
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        // Fetch count of guests and photos created in last 24 hours (excluding dismissed ones)
+        const dismissedUntilStr = localStorage.getItem("notifications_dismissed_until");
+        const dismissedTime = dismissedUntilStr ? new Date(dismissedUntilStr).getTime() : 0;
+        const oneDayAgoTime = Date.now() - 24 * 60 * 60 * 1000;
+        const querySince = new Date(Math.max(dismissedTime, oneDayAgoTime)).toISOString();
         
         const [guestsCountRes, photosCountRes] = await Promise.all([
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -494,13 +520,13 @@ function TopNavbar({
             .from("guests")
             .select("id", { count: "exact", head: true })
             .in("event_id", eventIds)
-            .gt("created_at", oneDayAgo),
+            .gt("created_at", querySince),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (supabase as any)
             .from("event_photos")
             .select("id", { count: "exact", head: true })
             .in("event_id", eventIds)
-            .gt("uploaded_at", oneDayAgo),
+            .gt("uploaded_at", querySince),
         ]);
 
         const totalUnread = (guestsCountRes.count ?? 0) + (photosCountRes.count ?? 0);
@@ -512,9 +538,18 @@ function TopNavbar({
 
     fetchUnreadCount();
     
+    // Listen for custom notifications_updated event
+    const handleDismissUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener("notifications_updated", handleDismissUpdate);
+    
     // Set up polling interval to check for new alerts every 20 seconds
     const interval = setInterval(fetchUnreadCount, 20000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("notifications_updated", handleDismissUpdate);
+    };
   }, []);
 
   return (
@@ -1194,56 +1229,67 @@ export function NotificationDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
       };
 
+      const dismissedUntilStr = localStorage.getItem("notifications_dismissed_until");
+      const dismissedUntil = dismissedUntilStr ? new Date(dismissedUntilStr).getTime() : 0;
       const items: NotificationItem[] = [];
 
       (recentGuests ?? []).forEach((g: { id: string; display_name: string | null; phone: string | null; created_at: string; event_id: string }) => {
-        items.push({
-          id: `guest-${g.id}`,
-          type: "guest",
-          eventId: g.event_id,
-          title: `${g.display_name ?? "New Guest"} joined`,
-          desc: `Registered for "${eventMap.get(g.event_id) ?? "Event"}" · ${g.phone}`,
-          time: formatTimeAgo(new Date(g.created_at)),
-          timestamp: new Date(g.created_at).getTime(),
-          icon: "person_add",
-          color: "border-emerald-500/10 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05] hover:border-emerald-500/20 text-[#2D2D2D]",
-          iconColor: "text-emerald-600 bg-emerald-50 border-emerald-100",
-          actionUrl: `/dashboard/events/${g.event_id}/attendees`,
-          actionLabel: "View Attendees",
-        });
+        const timestamp = new Date(g.created_at).getTime();
+        if (timestamp > dismissedUntil) {
+          items.push({
+            id: `guest-${g.id}`,
+            type: "guest",
+            eventId: g.event_id,
+            title: `${g.display_name ?? "New Guest"} joined`,
+            desc: `Registered for "${eventMap.get(g.event_id) ?? "Event"}" · ${g.phone}`,
+            time: formatTimeAgo(new Date(g.created_at)),
+            timestamp,
+            icon: "person_add",
+            color: "border-emerald-500/10 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05] hover:border-emerald-500/20 text-[#2D2D2D]",
+            iconColor: "text-emerald-600 bg-emerald-50 border-emerald-100",
+            actionUrl: `/dashboard/events/${g.event_id}/attendees`,
+            actionLabel: "View Attendees",
+          });
+        }
       });
 
       (recentPhotos ?? []).forEach((p: { id: string; original_filename: string; uploaded_at: string; event_id: string }) => {
-        items.push({
-          id: `photo-${p.id}`,
-          type: "photo",
-          eventId: p.event_id,
-          title: "New Photo Ingested",
-          desc: `Uploaded "${p.original_filename}" to "${eventMap.get(p.event_id) ?? "Event"}"`,
-          time: formatTimeAgo(new Date(p.uploaded_at)),
-          timestamp: new Date(p.uploaded_at).getTime(),
-          icon: "photo_library",
-          color: "border-[#D67D5C]/10 bg-[#D67D5C]/[0.02] hover:bg-[#D67D5C]/[0.05] hover:border-[#D67D5C]/20 text-[#2D2D2D]",
-          iconColor: "text-[#D67D5C] bg-orange-50 border-orange-100",
-          actionUrl: `/dashboard/events/${p.event_id}/gallery`,
-          actionLabel: "Open Gallery",
-        });
+        const timestamp = new Date(p.uploaded_at).getTime();
+        if (timestamp > dismissedUntil) {
+          items.push({
+            id: `photo-${p.id}`,
+            type: "photo",
+            eventId: p.event_id,
+            title: "New Photo Ingested",
+            desc: `Uploaded "${p.original_filename}" to "${eventMap.get(p.event_id) ?? "Event"}"`,
+            time: formatTimeAgo(new Date(p.uploaded_at)),
+            timestamp,
+            icon: "photo_library",
+            color: "border-[#D67D5C]/10 bg-[#D67D5C]/[0.02] hover:bg-[#D67D5C]/[0.05] hover:border-[#D67D5C]/20 text-[#2D2D2D]",
+            iconColor: "text-[#D67D5C] bg-orange-50 border-orange-100",
+            actionUrl: `/dashboard/events/${p.event_id}/gallery`,
+            actionLabel: "Open Gallery",
+          });
+        }
       });
 
       // System notification
-      items.push({
-        id: "system-storage",
-        type: "system",
-        title: "Cloud Engine Ready",
-        desc: "Allocated storage limits are within thresholds. 10.0 GB available.",
-        time: "1 hour ago",
-        timestamp: Date.now() - 3600000,
-        icon: "cloud_done",
-        color: "border-indigo-500/10 bg-indigo-500/[0.02] hover:bg-indigo-500/[0.05] hover:border-indigo-500/20 text-[#2D2D2D]",
-        iconColor: "text-indigo-600 bg-indigo-50 border-indigo-100",
-        actionUrl: "/dashboard/storage",
-        actionLabel: "Check Status",
-      });
+      const systemTimestamp = Date.now() - 3600000;
+      if (systemTimestamp > dismissedUntil) {
+        items.push({
+          id: "system-storage",
+          type: "system",
+          title: "Cloud Engine Ready",
+          desc: "Allocated storage limits are within thresholds. 10.0 GB available.",
+          time: "1 hour ago",
+          timestamp: systemTimestamp,
+          icon: "cloud_done",
+          color: "border-indigo-500/10 bg-indigo-500/[0.02] hover:bg-indigo-500/[0.05] hover:border-indigo-500/20 text-[#2D2D2D]",
+          iconColor: "text-indigo-600 bg-indigo-50 border-indigo-100",
+          actionUrl: "/dashboard/storage",
+          actionLabel: "Check Status",
+        });
+      }
 
       items.sort((a, b) => b.timestamp - a.timestamp);
       setNotifications(items);
@@ -1272,7 +1318,9 @@ export function NotificationDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   };
 
   const handleClearNotifications = () => {
+    localStorage.setItem("notifications_dismissed_until", new Date().toISOString());
     setNotifications([]);
+    window.dispatchEvent(new Event("notifications_updated"));
   };
 
   if (!isOpen) return null;

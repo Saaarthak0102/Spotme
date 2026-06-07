@@ -4,13 +4,20 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
-type UploadStep = "idle" | "uploading" | "processing" | "done";
+type UploadStep = "idle" | "camera" | "uploading" | "processing" | "done";
 
 export default function FindMePage() {
   const { eventId } = useParams<{ eventId: string }>();
   const router = useRouter();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  
+  // Custom camera refs and states
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [flashActive, setFlashActive] = useState(false);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
 
   const [step, setStep] = useState<UploadStep>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -24,6 +31,124 @@ export default function FindMePage() {
     const stored = localStorage.getItem(`guest_id_${eventId}`);
     setGuestId(stored);
   }, [eventId]);
+
+  // Clean up camera stream when component unmounts or step changes
+  useEffect(() => {
+    if (step !== "camera") {
+      stopCamera();
+    }
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const startCamera = async (mode: "user" | "environment" = "user") => {
+    setIsCameraLoading(true);
+    setCameraError(null);
+    try {
+      // Stop existing stream if any
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+
+      const constraints = {
+        video: {
+          facingMode: mode,
+          width: { ideal: 1080 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      };
+
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = newStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      setCameraError("Unable to access your camera. Falling back to manual upload.");
+      setStep("idle");
+      // Graceful fallback: trigger native file upload / camera capture
+      cameraInputRef.current?.click();
+    } finally {
+      setIsCameraLoading(false);
+    }
+  };
+
+  const toggleCamera = async () => {
+    const nextMode = facingMode === "user" ? "environment" : "user";
+    setFacingMode(nextMode);
+    await startCamera(nextMode);
+  };
+
+  const captureSelfie = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Trigger flash animation
+    setFlashActive(true);
+    setTimeout(() => setFlashActive(false), 150);
+
+    const canvas = document.createElement("canvas");
+    const videoWidth = video.videoWidth || 640;
+    const videoHeight = video.videoHeight || 480;
+    
+    // Crop to square matching our circular viewfinder UI representation
+    const size = Math.min(videoWidth, videoHeight);
+    canvas.width = size;
+    canvas.height = size;
+
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const sx = (videoWidth - size) / 2;
+      const sy = (videoHeight - size) / 2;
+
+      // Front cameras should be mirrored for a natural looking selfie
+      if (facingMode === "user") {
+        ctx.translate(size, 0);
+        ctx.scale(-1, 1);
+      }
+
+      ctx.drawImage(
+        video,
+        sx,
+        sy,
+        size,
+        size,
+        0,
+        0,
+        size,
+        size
+      );
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+            handleFileSelect(file);
+          } else {
+            alert("Failed to capture image. Please try again.");
+          }
+        },
+        "image/jpeg",
+        0.95
+      );
+    }
+  };
 
   const validateFile = (file: File): string | null => {
     if (file.size > 10 * 1024 * 1024) return "Image must be under 10 MB.";
@@ -49,7 +174,6 @@ export default function FindMePage() {
 
     try {
       // ── Step 1: Ask the server for a signed upload URL ──────────────
-      // This is a tiny JSON request (no file) so it never hits the 4.5MB limit
       const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
       const urlRes = await fetch("/api/selfie/upload-url", {
         method: "POST",
@@ -70,8 +194,7 @@ export default function FindMePage() {
 
       setUploadProgress(20);
 
-      // ── Step 2: PUT the file directly to Supabase (bypasses Vercel) ─
-      // The signed URL allows any size upload directly to the bucket.
+      // ── Step 2: PUT the file directly to Supabase ───────────────────
       const uploadRes = await fetch(signedUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type || "image/jpeg" },
@@ -95,7 +218,6 @@ export default function FindMePage() {
       });
 
       if (!confirmRes.ok) {
-        // DB record failed but file is uploaded — log and continue
         console.warn("[find-me] Confirm failed (non-fatal):", await confirmRes.text());
       }
 
@@ -128,7 +250,7 @@ export default function FindMePage() {
     <div className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center px-5 py-10 sm:px-8">
       <div className="w-full max-w-sm">
 
-        {/* ── Hidden camera input (opens front camera on mobile) ─────── */}
+        {/* ── Hidden camera input (fallback/opens front camera on mobile) ── */}
         <input
           ref={cameraInputRef}
           type="file"
@@ -198,9 +320,16 @@ export default function FindMePage() {
               </div>
             )}
 
-            {/* Upload circle — opens camera */}
+            {/* Upload circle — opens custom camera feed */}
             <button
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={async () => {
+                if (typeof navigator !== "undefined" && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function") {
+                  setStep("camera");
+                  await startCamera("user");
+                } else {
+                  cameraInputRef.current?.click();
+                }
+              }}
               disabled={!guestId || step !== "idle"}
               className="group mx-auto mt-8 flex h-48 w-48 flex-col items-center justify-center rounded-full border-[3px] border-dashed border-[#D67D5C]/30 bg-gradient-to-br from-[#FDF8F1] to-[#FFF5EE] transition-all duration-300 hover:border-[#D67D5C]/60 hover:shadow-[0_0_40px_rgba(214,125,92,0.1)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed sm:h-56 sm:w-56"
             >
@@ -215,7 +344,7 @@ export default function FindMePage() {
             <button
               onClick={() => galleryInputRef.current?.click()}
               disabled={!guestId || step !== "idle"}
-              className="mx-auto mt-5 flex h-11 items-center gap-2 rounded-xl border border-[#2D2D2D]/8 bg-white px-5 text-xs font-semibold text-[#574F49] transition hover:bg-[#FDF8F1] active:scale-[0.98] disabled:opacity-50"
+              className="mx-auto mt-5 flex h-11 items-center gap-2 rounded-xl border border-[#2D2D2D]/8 bg-white px-5 text-xs font-semibold text-[#574F49] transition hover:bg-[#FDF8F1] active:scale-[0.98] disabled:opacity-50 shadow-sm"
             >
               <span className="material-symbols-outlined text-[18px]">photo_library</span>
               Choose from gallery
@@ -241,6 +370,96 @@ export default function FindMePage() {
               <span className="material-symbols-outlined text-[14px]">arrow_back</span>
               Back to all photos
             </Link>
+          </div>
+        )}
+
+        {/* ── Camera Viewport ────────────────────────────────────────── */}
+        {step === "camera" && (
+          <div className="animate-fade-in text-center flex flex-col items-center relative">
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              Take a selfie
+            </h1>
+            <p className="mt-2 text-sm text-[#827970] max-w-[280px]">
+              Center your face in the circular frame.
+            </p>
+
+            {/* Circular viewfinder */}
+            <div className="relative mt-8 h-64 w-64 sm:h-72 sm:w-72 overflow-hidden rounded-full border-4 border-[#D67D5C] shadow-[0_0_30px_rgba(214,125,92,0.15)] bg-stone-900">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`h-full w-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
+              />
+
+              {/* Centered Guide ring overlay */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="h-4/5 w-4/5 rounded-full border border-dashed border-white/30 animate-pulse" />
+              </div>
+
+              {/* Shutter flash overlay */}
+              <div
+                className={`absolute inset-0 bg-white z-50 pointer-events-none transition-opacity duration-150 ${
+                  flashActive ? "opacity-100" : "opacity-0"
+                }`}
+              />
+
+              {/* Camera loading indicator */}
+              {isCameraLoading && (
+                <div className="absolute inset-0 bg-stone-900/90 flex flex-col items-center justify-center text-white">
+                  <span className="material-symbols-outlined animate-spin text-3xl">sync</span>
+                  <span className="mt-2 text-xs font-medium text-stone-300">Accessing camera...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Camera Controls */}
+            <div className="mt-8 flex items-center justify-center gap-6 w-full max-w-[280px]">
+              {/* Close / Return button */}
+              <button
+                onClick={() => {
+                  stopCamera();
+                  setStep("idle");
+                }}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-[#2D2D2D]/8 bg-white text-[#574F49] transition hover:bg-[#FDF8F1] active:scale-95 shadow-sm"
+                title="Cancel"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+
+              {/* Custom Shutter Button */}
+              <button
+                onClick={captureSelfie}
+                disabled={isCameraLoading}
+                className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#D67D5C]/20 bg-white p-1 transition hover:border-[#D67D5C]/55 active:scale-95 shadow-md disabled:opacity-50"
+                title="Capture Photo"
+              >
+                <div className="h-full w-full rounded-full bg-gradient-to-br from-[#D67D5C] to-[#F4A261] active:from-[#B36144] active:to-[#D67D5C]" />
+              </button>
+
+              {/* Toggle camera source */}
+              <button
+                onClick={toggleCamera}
+                disabled={isCameraLoading}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-[#2D2D2D]/8 bg-white text-[#574F49] transition hover:bg-[#FDF8F1] active:scale-95 shadow-sm disabled:opacity-50"
+                title="Switch Camera"
+              >
+                <span className="material-symbols-outlined text-[20px]">flip_camera_ios</span>
+              </button>
+            </div>
+
+            {/* Manual upload fallback option inside camera panel */}
+            <button
+              onClick={() => {
+                stopCamera();
+                setStep("idle");
+                galleryInputRef.current?.click();
+              }}
+              className="mt-8 text-xs text-[#827970] hover:text-[#2D2D2D] transition underline underline-offset-4"
+            >
+              Camera not working? Upload from gallery
+            </button>
           </div>
         )}
 
@@ -306,3 +525,4 @@ export default function FindMePage() {
     </div>
   );
 }
+
