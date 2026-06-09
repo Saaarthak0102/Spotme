@@ -701,6 +701,7 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
   const [checkingLimit, setCheckingLimit] = useState(false);
   const [isLimitReached, setIsLimitReached] = useState(false);
+  const [limitDescription, setLimitDescription] = useState("The Free Starter plan allows you to create only one event workspace. You already have an active workspace.");
 
   const [errors, setErrors] = useState<{
     name?: string;
@@ -735,17 +736,30 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
               .single();
             
             const plan = (profile as any)?.plan ?? "free";
-            const isFree = plan === "free" || plan === "solo";
+            
+            let limit = 999999;
+            if (plan === "free" || plan === "solo" || plan === "starter") {
+              limit = 1;
+            } else if (plan === "pro") {
+              limit = 4;
+            } else if (plan === "studio_basic") {
+              limit = 5;
+            }
 
-            if (isFree) {
+            if (limit < 999999) {
               // Count total events owned by this user
               const { count, error: countErr } = await (supabase as any)
                 .from("events")
                 .select("id", { count: "exact", head: true })
                 .eq("owner_id", user.id);
 
-              if (!countErr && count !== null && count >= 1) {
+              if (!countErr && count !== null && count >= limit) {
                 setIsLimitReached(true);
+                if (limit === 1) {
+                  setLimitDescription("The Free Starter plan allows you to create only one event workspace. You already have an active workspace.");
+                } else {
+                  setLimitDescription(`Your subscription plan allows you to create up to ${limit} event workspaces. You already have ${count} active workspaces.`);
+                }
               } else {
                 setIsLimitReached(false);
               }
