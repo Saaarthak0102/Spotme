@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useState, useEffect, useCallback, useRef, Suspense } from "react";
 import type { Event as EventRecord } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { PlanLimitModal } from "./plan-limit-modal";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -698,6 +699,10 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [checkingLimit, setCheckingLimit] = useState(false);
+  const [isLimitReached, setIsLimitReached] = useState(false);
+  const [limitDescription, setLimitDescription] = useState("The Free Starter plan allows you to create only one event workspace. You already have an active workspace.");
+
   const [errors, setErrors] = useState<{
     name?: string;
     venue?: string;
@@ -716,7 +721,64 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
           name: searchName,
         }));
       }, 0);
+
+      const checkPlanLimit = async () => {
+        setCheckingLimit(true);
+        try {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Fetch profile plan details
+            const { data: profile } = await (supabase as any)
+              .from("profiles")
+              .select("plan")
+              .eq("id", user.id)
+              .single();
+            
+            const plan = (profile as any)?.plan ?? "free";
+            
+            let limit = 999999;
+            if (plan === "free" || plan === "solo" || plan === "starter") {
+              limit = 1;
+            } else if (plan === "pro") {
+              limit = 4;
+            } else if (plan === "studio_basic") {
+              limit = 5;
+            }
+
+            if (limit < 999999) {
+              // Count total events owned by this user
+              const { count, error: countErr } = await (supabase as any)
+                .from("events")
+                .select("id", { count: "exact", head: true })
+                .eq("owner_id", user.id);
+
+              if (!countErr && count !== null && count >= limit) {
+                setIsLimitReached(true);
+                if (limit === 1) {
+                  setLimitDescription("The Free Starter plan allows you to create only one event workspace. You already have an active workspace.");
+                } else {
+                  setLimitDescription(`Your subscription plan allows you to create up to ${limit} event workspaces. You already have ${count} active workspaces.`);
+                }
+              } else {
+                setIsLimitReached(false);
+              }
+            } else {
+              setIsLimitReached(false);
+            }
+          }
+        } catch (err) {
+          console.error("Error checking plan limit:", err);
+        } finally {
+          setCheckingLimit(false);
+        }
+      };
+
+      checkPlanLimit();
+
       return () => clearTimeout(timer);
+    } else {
+      setIsLimitReached(false);
     }
   }, [isOpen]);
 
@@ -753,6 +815,30 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
   };
 
   if (!isOpen) return null;
+
+  if (checkingLimit) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div className="absolute inset-0 bg-[#2D2D2D]/40 backdrop-blur-md" onClick={onClose} />
+        <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-[#2D2D2D]/8 bg-white p-8 text-center shadow-2xl backdrop-blur-2xl">
+          <div className="flex flex-col items-center justify-center py-8 text-[#827970] gap-3">
+            <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#2D2D2D]/10 border-t-[#D67D5C]" />
+            <p className="text-xs font-medium">Checking subscription tier...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLimitReached) {
+    return (
+      <PlanLimitModal
+        isOpen={isOpen}
+        onClose={onClose}
+        description="The Free Starter plan allows you to create only one event workspace. You already have an active workspace."
+      />
+    );
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1560,11 +1646,13 @@ export function EventWorkspaceShell({
   activePath,
   children,
   userName,
+  isCollaborator = false,
 }: {
   event: EventRecord;
   activePath: string;
   children: ReactNode;
   userName?: string;
+  isCollaborator?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -1660,29 +1748,31 @@ export function EventWorkspaceShell({
 
         {/* Workspace navigation */}
         <nav className="mt-6 space-y-1">
-          {workspaceNavigation.map((item) => {
-            const href = `${rootHref}${item.href}`;
-            const selected = activePath === item.href;
+          {workspaceNavigation
+            .filter((item) => !isCollaborator || item.href === "/uploads" || item.href === "/gallery")
+            .map((item) => {
+              const href = `${rootHref}${item.href}`;
+              const selected = activePath === item.href;
 
-            return (
-              <Link
-                key={item.label}
-                href={href}
-                onClick={closeSidebar}
-                title={isCollapsed && !sidebarOpen ? item.label : undefined}
-                className={`flex items-center gap-3 rounded-xl py-3 text-sm font-medium transition-all duration-200 ${
-                  isCollapsed && !sidebarOpen ? "justify-center px-0 w-11 h-11 mx-auto" : "px-4"
-                } ${
-                  selected
-                    ? "bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] text-white shadow-[0_4px_12px_rgba(214,125,92,0.3)]"
-                    : "text-white/62 hover:bg-white/6 hover:text-white"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
-                {!isCollapsed || sidebarOpen ? <span>{item.label}</span> : null}
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={item.label}
+                  href={href}
+                  onClick={closeSidebar}
+                  title={isCollapsed && !sidebarOpen ? item.label : undefined}
+                  className={`flex items-center gap-3 rounded-xl py-3 text-sm font-medium transition-all duration-200 ${
+                    isCollapsed && !sidebarOpen ? "justify-center px-0 w-11 h-11 mx-auto" : "px-4"
+                  } ${
+                    selected
+                      ? "bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] text-white shadow-[0_4px_12px_rgba(214,125,92,0.3)]"
+                      : "text-white/62 hover:bg-white/6 hover:text-white"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+                  {!isCollapsed || sidebarOpen ? <span>{item.label}</span> : null}
+                </Link>
+              );
+            })}
         </nav>
 
 

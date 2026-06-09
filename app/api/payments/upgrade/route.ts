@@ -7,9 +7,12 @@ import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 // ── Server-side plan config map ───────────────────────────────────────────────
 // Keep in sync with lib/admin-data.ts PLAN_ENTITLEMENTS
 const PLAN_CONFIG: Record<string, { maxEvents: number; maxStorageGb: number }> = {
-  free:      { maxEvents: 1,      maxStorageGb: 10   },
-  pro:       { maxEvents: 10,     maxStorageGb: 100  },
-  unlimited: { maxEvents: 999999, maxStorageGb: 1000 },
+  free:         { maxEvents: 1,      maxStorageGb: 5    },
+  starter:      { maxEvents: 1,      maxStorageGb: 20   },
+  pro:          { maxEvents: 4,      maxStorageGb: 60   },
+  studio_basic: { maxEvents: 5,      maxStorageGb: 40   },
+  studio_pro:   { maxEvents: 999999, maxStorageGb: 100  },
+  custom:       { maxEvents: 999999, maxStorageGb: 1000 },
 };
 
 /**

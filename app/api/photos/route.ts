@@ -34,17 +34,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Verify the user owns this event
+  // Verify the user owns this event or is a collaborator
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: event } = await (supabase as any)
+  let hasAccess = false;
+  
+  const { data: ownedEvent } = await (supabase as any)
     .from("events")
     .select("id")
     .eq("id", event_id)
     .eq("owner_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!event) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  if (ownedEvent) {
+    hasAccess = true;
+  } else {
+    const { data: collab } = await (supabase as any)
+      .from("event_collaborators")
+      .select("id")
+      .eq("event_id", event_id)
+      .eq("email", user.email)
+      .maybeSingle();
+      
+    if (collab) {
+      hasAccess = true;
+    }
+  }
+
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Unauthorized or Event not found" }, { status: 403 });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

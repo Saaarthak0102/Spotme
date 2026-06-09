@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Event as EventRecord, EventPhoto, Guest } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { PlanLimitModal } from "./plan-limit-modal";
 
 /* ── Reusable Mini Stat Card ────────────────────── */
 function MiniStat({
@@ -64,6 +65,107 @@ export function EventOverviewPanel({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(photos.length === 50);
+
+  const [isCollabModalOpen, setIsCollabModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [userPlan, setUserPlan] = useState<string>("free");
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+      if (user) {
+        const { data: profile } = await (supabase as any)
+          .from("profiles")
+          .select("plan")
+          .eq("id", user.id)
+          .single();
+        if ((profile as any)?.plan) {
+          setUserPlan((profile as any).plan);
+        }
+      }
+    };
+    getSession();
+  }, []);
+
+  const isOwner = currentUser && event.owner_id === currentUser.id;
+
+  const fetchCollaborators = async () => {
+    const supabase = createClient();
+    const { data, error } = await (supabase as any)
+      .from("event_collaborators")
+      .select("*")
+      .eq("event_id", event.id);
+    if (!error && data) {
+      setCollaborators(data);
+    }
+  };
+
+  useEffect(() => {
+    if (isOwner) {
+      fetchCollaborators();
+    }
+  }, [isOwner]);
+
+  const handleAddCollaborator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteError(null);
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setInviteError("Please enter a valid email address.");
+      return;
+    }
+
+    if (collaborators.length >= 3) {
+      setInviteError("You can add a maximum of 3 collaborators.");
+      return;
+    }
+
+    if (collaborators.some(c => c.email === email)) {
+      setInviteError("This email already has access.");
+      return;
+    }
+
+    setInviteLoading(true);
+    const supabase = createClient();
+    const { error } = await (supabase as any)
+      .from("event_collaborators")
+      .insert({ event_id: event.id, email })
+      .select()
+      .single();
+
+    setInviteLoading(false);
+    if (error) {
+      setInviteError(error.message);
+    } else {
+      setInviteEmail("");
+      fetchCollaborators();
+    }
+  };
+
+  const handleRemoveCollaborator = async (id: string) => {
+    if (!confirm("Are you sure you want to remove access for this photographer?")) return;
+    const supabase = createClient();
+    const { error } = await (supabase as any)
+      .from("event_collaborators")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Failed to remove collaborator: " + error.message);
+    } else {
+      fetchCollaborators();
+    }
+  };
 
   useEffect(() => {
     setLocalPhotos(photos);
@@ -161,7 +263,18 @@ export function EventOverviewPanel({
 
       {/* Dynamic Folders Grid */}
       <div>
-        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#766D66]">Workspace Folders</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#766D66]">Workspace Folders</h3>
+          {isOwner && !(userPlan === "free" || userPlan === "solo" || !userPlan) && (
+            <button
+              onClick={() => setIsCollabModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-[#2D2D2D]/8 bg-white/60 px-3.5 py-1.5 text-xs font-semibold text-[#B36144] hover:bg-[#FFF3EB] hover:border-[#D67D5C]/35 hover:shadow-[0_8px_24px_rgba(214,125,92,0.06)] transition"
+            >
+              <span className="material-symbols-outlined text-[16px]">groups</span>
+              Manage Collaborators {collaborators.length > 0 && `(${collaborators.length}/3)`}
+            </button>
+          )}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { name: "Event Photos", icon: "folder", count: `${photoCount} items`, size: totalSizeFormatted, color: "text-[#D67D5C] bg-[#D67D5C]/8", href: `${rootHref}/gallery` },
@@ -431,6 +544,133 @@ export function EventOverviewPanel({
                 </>
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Limit Modal */}
+      {isLimitModalOpen && (
+        <PlanLimitModal
+          isOpen={isLimitModalOpen}
+          onClose={() => setIsLimitModalOpen(false)}
+          description="The Free Starter plan does not include event collaborators. Upgrade to the Pro plan to invite other photographers."
+        />
+      )}
+
+      {/* Collaborators Modal */}
+      {isCollabModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/35 backdrop-blur-md transition-opacity"
+            onClick={() => setIsCollabModalOpen(false)}
+          />
+
+          {/* Modal Container */}
+          <div className="relative w-full max-w-lg transform overflow-hidden rounded-[28px] border border-[#2D2D2D]/6 bg-white/95 p-6 shadow-2xl backdrop-blur-xl transition-all sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-[#2D2D2D]/5 pb-4 mb-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]">
+                  <span className="material-symbols-outlined text-[20px]">groups</span>
+                </span>
+                <div>
+                  <h3 className="text-base font-semibold tracking-tight text-[#2D2D2D]">Photographer Access</h3>
+                  <p className="text-xs text-[#827970] mt-0.5">Manage collaboration for {event.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCollabModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2D2D2D]/8 bg-white text-[#827970] hover:text-[#2D2D2D] transition"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-6">
+              <p className="text-xs leading-5 text-[#827970]">
+                Share this event workspace with other photographers. They can upload photos and view the gallery, but cannot modify settings, access code, or view guests.
+              </p>
+
+              {/* Invite Form */}
+              <form onSubmit={handleAddCollaborator} className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-grow">
+                  <input
+                    type="email"
+                    placeholder="photographer@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => {
+                      setInviteEmail(e.target.value);
+                      setInviteError(null);
+                    }}
+                    disabled={inviteLoading || collaborators.length >= 3}
+                    className="h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50 focus:shadow-[0_0_0_3px_rgba(214,125,92,0.08)] disabled:opacity-50"
+                  />
+                  {inviteError && (
+                    <p className="mt-1.5 text-[10px] font-semibold text-red-600">
+                      {inviteError}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={inviteLoading || !inviteEmail.trim() || collaborators.length >= 3}
+                  className="h-10 shrink-0 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-5 text-xs font-semibold text-white shadow-md hover:-translate-y-0.5 transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {inviteLoading ? (
+                    <><span className="material-symbols-outlined text-[14px] animate-spin">sync</span> Adding...</>
+                  ) : (
+                    <>Add ({collaborators.length}/3)</>
+                  )}
+                </button>
+              </form>
+
+              {/* List of collaborators */}
+              {collaborators.length > 0 ? (
+                <div className="overflow-hidden rounded-xl border border-[#2D2D2D]/5 bg-white/40">
+                  <table className="w-full text-left text-xs text-[#2D2D2D]">
+                    <thead className="bg-[#FCF9F5] text-[10px] uppercase tracking-wider text-[#92877F] border-b border-[#2D2D2D]/5">
+                      <tr>
+                        <th className="px-4 py-2.5">Email address</th>
+                        <th className="px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {collaborators.map((collab) => (
+                        <tr key={collab.id} className="border-b border-[#2D2D2D]/5 last:border-0 hover:bg-[#FDF8F1]/40 transition">
+                          <td className="px-4 py-3 font-medium flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[16px] text-[#827970]">person</span>
+                            <span>{collab.email}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 border border-orange-100 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-600">
+                              Access Granted
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCollaborator(collab.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition"
+                              title="Revoke access"
+                            >
+                              <span className="material-symbols-outlined text-[16px] block">delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#2D2D2D]/8 bg-white/30 p-6 text-center text-[#827970] text-xs">
+                  <span className="material-symbols-outlined text-2xl text-[#D67D5C]/40 block mb-1.5">group_add</span>
+                  No other photographers have been given access to this event yet.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

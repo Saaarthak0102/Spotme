@@ -4,13 +4,17 @@ import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
 // ── Server-side price map (paise) — NEVER let the client supply amounts ──────
 const PLAN_PRICES: Record<string, number> = {
-  pro: 99900,        // ₹999/month
-  unlimited: 249900, // ₹2,499/month
+  starter: 49900,      // ₹499/month
+  pro: 99900,          // ₹999/month
+  studio_basic: 69900, // ₹699/month
+  studio_pro: 159900,  // ₹1,599/month
 };
 
 const PLAN_LABELS: Record<string, string> = {
+  starter: "Starter Plan — Monthly",
   pro: "Personal Pro Plan — Monthly",
-  unlimited: "Studio Plan — Monthly",
+  studio_basic: "Studio Basic Plan — Monthly",
+  studio_pro: "Studio Pro Plan — Monthly",
 };
 
 /**
@@ -41,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const { plan } = await req.json();
 
-    if (!plan || !["pro", "unlimited"].includes(plan)) {
+    if (!plan || !["starter", "pro", "studio_basic", "studio_pro"].includes(plan)) {
       return NextResponse.json({ error: "Invalid plan selection" }, { status: 400 });
     }
 
