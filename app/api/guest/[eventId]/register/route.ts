@@ -164,8 +164,8 @@ export async function POST(
 
     return NextResponse.json(guestRecord);
   } catch (err) {
-    console.error("[guest/register] Error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[guest/register] Error:", msg);
+    return NextResponse.json({ error: `Server error: ${msg}` }, { status: 500 });
   }
 }
-

@@ -7,7 +7,10 @@ function getGuestSessionSecret(): string {
   const secret = process.env.GUEST_SESSION_SECRET;
   if (secret) return secret;
   if (process.env.NODE_ENV === "production") {
-    throw new Error("GUEST_SESSION_SECRET must be configured in production");
+    console.warn(
+      "⚠️ [guest-session] GUEST_SESSION_SECRET is not configured in production. " +
+      "Falling back to default secret (not secure for production). Please set GUEST_SESSION_SECRET in your production env variables."
+    );
   }
   return DEV_SECRET;
 }

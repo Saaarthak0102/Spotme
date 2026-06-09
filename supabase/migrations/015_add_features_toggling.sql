@@ -29,3 +29,4 @@ CREATE POLICY "Allow read access to authenticated users"
 INSERT INTO public.system_settings (key, value)
 VALUES ('disabled_features', '[]'::jsonb)
 ON CONFLICT (key) DO NOTHING;
+
