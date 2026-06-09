@@ -116,6 +116,7 @@ export function EventOverviewPanel({
       .eq("event_id", event.id);
     if (!error && data) {
       setCollaborators(data);
+      window.dispatchEvent(new CustomEvent("collab-count-update", { detail: { count: data.length } }));
     }
   };
 
@@ -183,6 +184,12 @@ export function EventOverviewPanel({
     setLocalPhotos(photos);
     setHasMore(photos.length === 50);
   }, [photos]);
+
+  useEffect(() => {
+    const handler = () => setIsCollabModalOpen(true);
+    window.addEventListener("open-collab-modal", handler);
+    return () => window.removeEventListener("open-collab-modal", handler);
+  }, []);
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -277,15 +284,6 @@ export function EventOverviewPanel({
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[#766D66]">Workspace Folders</h3>
-          {isOwner && !(userPlan === "free" || userPlan === "solo" || !userPlan) && !disabledFeatures.includes("collaborators") && (
-            <button
-              onClick={() => setIsCollabModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-[#2D2D2D]/8 bg-white/60 px-3.5 py-1.5 text-xs font-semibold text-[#B36144] hover:bg-[#FFF3EB] hover:border-[#D67D5C]/35 hover:shadow-[0_8px_24px_rgba(214,125,92,0.06)] transition"
-            >
-              <span className="material-symbols-outlined text-[16px]">groups</span>
-              Manage Collaborators {collaborators.length > 0 && `(${collaborators.length}/3)`}
-            </button>
-          )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
@@ -928,8 +926,8 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
 
   const overallProgress = totalFiles > 0
     ? Math.round(
-        (uploadQueue.reduce((acc, item) => acc + item.progress, 0) / (totalFiles * 100)) * 100
-      )
+      (uploadQueue.reduce((acc, item) => acc + item.progress, 0) / (totalFiles * 100)) * 100
+    )
     : 0;
 
   return (
@@ -938,9 +936,8 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
       <div className="space-y-4 sm:space-y-5">
         {/* Drop zone */}
         <section
-          className={`rounded-[28px] border-2 border-dashed bg-white/50 p-5 backdrop-blur-xl sm:p-8 transition-all ${
-            isDragging ? "border-[#D67D5C] bg-[#D67D5C]/5" : "border-[#D67D5C]/30"
-          }`}
+          className={`rounded-[28px] border-2 border-dashed bg-white/50 p-5 backdrop-blur-xl sm:p-8 transition-all ${isDragging ? "border-[#D67D5C] bg-[#D67D5C]/5" : "border-[#D67D5C]/30"
+            }`}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
@@ -1056,25 +1053,23 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
               <div key={upload.id} className="border-b border-[#2D2D2D]/5 pb-3 last:border-0 last:pb-0">
                 <div className="flex justify-between gap-2 sm:gap-3">
                   <p className="truncate text-xs font-medium text-[#2D2D2D]">{upload.name}</p>
-                  <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    upload.state === "Processed" ? "bg-green-50 text-green-600" :
+                  <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${upload.state === "Processed" ? "bg-green-50 text-green-600" :
                     upload.state === "Error" ? "bg-red-50 text-red-500" :
-                    upload.state === "Paused" ? "bg-amber-50 text-amber-600" :
-                    upload.state === "Uploading" ? "bg-[#D67D5C]/10 text-[#B36144]" :
-                    "bg-slate-50 text-slate-500"
-                  }`}>
+                      upload.state === "Paused" ? "bg-amber-50 text-amber-600" :
+                        upload.state === "Uploading" ? "bg-[#D67D5C]/10 text-[#B36144]" :
+                          "bg-slate-50 text-slate-500"
+                    }`}>
                     {upload.state}
                   </span>
                 </div>
                 <div className="mt-2.5 h-1.5 rounded-full bg-[#EFE6DD] sm:mt-3">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      upload.state === "Error"
-                        ? "bg-red-400"
-                        : upload.state === "Paused"
+                    className={`h-full rounded-full transition-all duration-500 ${upload.state === "Error"
+                      ? "bg-red-400"
+                      : upload.state === "Paused"
                         ? "bg-amber-400"
                         : "bg-gradient-to-r from-[#D67D5C] to-[#F4A261]"
-                    }`}
+                      }`}
                     style={{ width: `${upload.progress}%` }}
                   />
                 </div>
@@ -1727,14 +1722,14 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to PERMANENTLY delete this event? This will delete all event settings, photos, guest details, and matching data. This action is irreversible.")) return;
-    
+
     // Double confirmation to make sure
     const confirmName = prompt(`To confirm deletion, please type the event name: "${event.name}"`);
     if (confirmName !== event.name) {
       alert("Event name confirmation did not match. Deletion canceled.");
       return;
     }
-    
+
     setDeleteLoading(true);
     try {
       const res = await fetch(`/api/events/${event.id}`, {
@@ -1765,18 +1760,16 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
     <div className="grid gap-4 xl:grid-cols-[1fr_330px] sm:gap-5">
       <div className="flex flex-col gap-4 sm:gap-5">
         {/* ── Privacy Mode — featured toggle ───────────── */}
-        <section className={`overflow-hidden rounded-[26px] border transition-all duration-500 ${
-          privacyMode
-            ? "border-violet-200 bg-gradient-to-br from-violet-50/80 to-purple-50/60 shadow-[0_8px_30px_rgba(139,92,246,0.08)]"
-            : "border-[#2D2D2D]/6 bg-white/60"
-        } backdrop-blur-xl p-5 sm:p-6`}>
+        <section className={`overflow-hidden rounded-[26px] border transition-all duration-500 ${privacyMode
+          ? "border-violet-200 bg-gradient-to-br from-violet-50/80 to-purple-50/60 shadow-[0_8px_30px_rgba(139,92,246,0.08)]"
+          : "border-[#2D2D2D]/6 bg-white/60"
+          } backdrop-blur-xl p-5 sm:p-6`}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${
-                privacyMode
-                  ? "bg-violet-100 text-violet-600"
-                  : "bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]"
-              }`}>
+              <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${privacyMode
+                ? "bg-violet-100 text-violet-600"
+                : "bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]"
+                }`}>
                 <span className="material-symbols-outlined text-[20px]">
                   {privacyMode ? "lock" : "lock_open"}
                 </span>
@@ -1825,15 +1818,13 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
               onClick={handleTogglePrivacy}
               disabled={privacyLoading || disabledFeatures.includes("privacy_mode")}
               aria-label="Toggle Privacy Mode"
-              className={`relative mt-0.5 h-7 w-13 shrink-0 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:opacity-60 ${
-                privacyMode && !disabledFeatures.includes("privacy_mode") ? "bg-violet-500" : "bg-[#DED5CC]"
-              }`}
+              className={`relative mt-0.5 h-7 w-13 shrink-0 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:opacity-60 ${privacyMode && !disabledFeatures.includes("privacy_mode") ? "bg-violet-500" : "bg-[#DED5CC]"
+                }`}
               style={{ minWidth: "52px" }}
             >
               <span
-                className={`absolute top-[3px] left-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-md transition-transform duration-300 ${
-                  privacyMode && !disabledFeatures.includes("privacy_mode") ? "translate-x-[25px]" : "translate-x-0"
-                }`}
+                className={`absolute top-[3px] left-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-md transition-transform duration-300 ${privacyMode && !disabledFeatures.includes("privacy_mode") ? "translate-x-[25px]" : "translate-x-0"
+                  }`}
               />
               {privacyLoading && (
                 <span className="absolute inset-0 flex items-center justify-center">
@@ -1849,14 +1840,14 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
           {[
             { title: "Event visibility", description: "Allow guests with QR access to view matching images.", action: "Public to guests", icon: "visibility", disabled: false },
             { title: "Gallery expiration", description: "Automatically archive delivered galleries after the event.", action: "30 days", icon: "schedule", disabled: false },
-            { 
-              title: "Branding settings", 
-              description: disabledFeatures.includes("custom_branding") 
-                ? "This feature is disabled by system administrator." 
-                : "Logo, accent and delivery message shown to guests.", 
-              action: disabledFeatures.includes("custom_branding") ? "Locked" : "Customize", 
-              icon: "palette", 
-              disabled: disabledFeatures.includes("custom_branding") 
+            {
+              title: "Branding settings",
+              description: disabledFeatures.includes("custom_branding")
+                ? "This feature is disabled by system administrator."
+                : "Logo, accent and delivery message shown to guests.",
+              action: disabledFeatures.includes("custom_branding") ? "Locked" : "Customize",
+              icon: "palette",
+              disabled: disabledFeatures.includes("custom_branding")
             },
             { title: "Reset QR access", description: "Issue a new QR code and expire all previous entry links.", action: "Reset code", icon: "qr_code_2", disabled: false },
           ].map((setting) => (
@@ -1877,7 +1868,7 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 disabled={setting.disabled}
                 className={`w-fit shrink-0 rounded-xl border border-[#DED5CC] px-4 py-2.5 text-xs font-semibold text-[#625D58] transition ${setting.disabled ? "opacity-50 cursor-not-allowed bg-stone-100" : "hover:bg-[#FDF8F1]"}`}
               >
