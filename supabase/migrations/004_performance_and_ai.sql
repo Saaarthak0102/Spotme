@@ -1,5 +1,5 @@
 -- ================================================================
--- Spotme / Revela — Performance & AI Migration (004)
+-- Spotme — Performance & AI Migration (004)
 -- Run this in your Supabase SQL Editor
 -- ================================================================
 

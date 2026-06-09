@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { deleteEventStorage } from "@/lib/storage-cleanup";
+import { checkCsrf } from "@/lib/api-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export async function DELETE(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
     const { eventId } = await params;
     
     if (!eventId) {

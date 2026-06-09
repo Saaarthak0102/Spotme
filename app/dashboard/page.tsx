@@ -35,7 +35,7 @@ export default async function DashboardPage() {
 
   const profileData = profileResult.data as {
     full_name: string | null;
-    plan: "free" | "pro" | "unlimited";
+    plan: "free" | "starter" | "pro" | "studio_basic" | "studio_pro" | "custom";
     max_events: number;
     max_storage_gb: number;
   } | null;

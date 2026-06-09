@@ -1,5 +1,5 @@
 // ============================================================
-// Spotme / Revela — Supabase Database Types
+// Spotme — Supabase Database Types
 // Mirrors the schema in supabase/schema.sql
 // ============================================================
 
@@ -22,9 +22,10 @@ export interface Profile {
   role: "admin" | "photographer";
   phone: string | null;
   bio: string | null;
-  plan: "free" | "pro" | "unlimited";
+  plan: "free" | "starter" | "pro" | "studio_basic" | "studio_pro" | "custom";
   max_events: number;
   max_storage_gb: number;
+  disabled_features: string[];
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +56,9 @@ export interface EventPhoto {
   original_filename: string | null;
   file_size_bytes: number | null;
   mime_type: string | null;
+  thumb_url?: string | null;
+  medium_url?: string | null;
+  blur_hash?: string | null;
   uploaded_at: string;
 }
 
@@ -97,6 +101,13 @@ export interface Inquiry {
   created_at: string;
 }
 
+export interface EventCollaborator {
+  id: string;
+  event_id: string;
+  email: string;
+  created_at: string;
+}
+
 // -------------------------------------------------------
 // Insert / Update helpers
 // -------------------------------------------------------
@@ -125,6 +136,12 @@ export type PhotoMatchUpdate = Partial<Omit<PhotoMatch, "id" | "matched_at">>;
 
 export type InquiryInsert = Omit<Inquiry, "id" | "created_at"> & { id?: string; created_at?: string };
 export type InquiryUpdate = Partial<Omit<Inquiry, "id" | "created_at">>;
+
+export type EventCollaboratorInsert = Omit<EventCollaborator, "id" | "created_at"> & {
+  id?: string;
+  created_at?: string;
+};
+export type EventCollaboratorUpdate = Partial<Omit<EventCollaborator, "id" | "created_at">>;
 
 // -------------------------------------------------------
 // Database definition (used by createClient<Database>())
@@ -173,6 +190,12 @@ export interface Database {
         Row: Inquiry;
         Insert: InquiryInsert;
         Update: InquiryUpdate;
+        Relationships: [];
+      };
+      event_collaborators: {
+        Row: EventCollaborator;
+        Insert: EventCollaboratorInsert;
+        Update: EventCollaboratorUpdate;
         Relationships: [];
       };
     };

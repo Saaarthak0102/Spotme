@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, createPhotographer, fetchPhotographers, updatePhotographer, deletePhotographer } from "@/lib/admin-data";
+import { checkBodySize, checkCsrf } from "@/lib/api-guard";
 
 async function checkAdmin() {
   const supabase = await createClient();
@@ -22,6 +23,11 @@ export async function GET() {
 
 // POST /api/admin/photographers — create a photographer
 export async function POST(req: NextRequest) {
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+  const sizeError = checkBodySize(req, 16 * 1024);
+  if (sizeError) return sizeError;
+
   const user = await checkAdmin();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -40,6 +46,11 @@ export async function POST(req: NextRequest) {
 
 // PATCH /api/admin/photographers — update a photographer
 export async function PATCH(req: NextRequest) {
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+  const sizeError = checkBodySize(req, 16 * 1024);
+  if (sizeError) return sizeError;
+
   const user = await checkAdmin();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -56,6 +67,9 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE /api/admin/photographers?id=xxx — delete a photographer
 export async function DELETE(req: NextRequest) {
+  const csrfError = checkCsrf(req);
+  if (csrfError) return csrfError;
+
   const user = await checkAdmin();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

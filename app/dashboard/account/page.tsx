@@ -7,6 +7,32 @@ import { validatePassword } from "@/lib/auth-validate";
 
 
 
+function formatRelativeTime(dateString?: string) {
+  if (!dateString) return "Last changed recently";
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return "Last changed just now";
+
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return "Last changed just now";
+    if (diffMins < 60) return `Last changed ${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+    if (diffHours < 24) return `Last changed ${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 30) return `Last changed ${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `Last changed ${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+
+    return `Last changed on ${date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
+  } catch (err) {
+    return "Last changed recently";
+  }
+}
+
 function SectionTitle({ icon, title }: { icon: string; title: string }) {
   return (
     <div className="mb-5 flex items-center gap-2">
@@ -25,43 +51,63 @@ function ChangePlanModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  currentPlan: "free" | "pro" | "unlimited";
+  currentPlan: string;
   onUpdated: () => void;
 }) {
   const plans = [
     {
       id: "free",
-      name: "Starter",
+      name: "Free Plan",
       price: "₹0",
-      period: "Free forever",
-      desc: "For casual photographers at small events.",
-      features: ["1 Active Event", "10 GB Cloud Storage", "AI Face Matching", "Dynamic QR Access"]
+      period: "1 yr validity",
+      desc: "For testing Spotme out.",
+      features: ["1 Event Creation", "5 GB Storage", "1 Year Validity", "AI Face Matching"]
+    },
+    {
+      id: "starter",
+      name: "Starter",
+      price: "₹499",
+      period: "/month",
+      desc: "For beginner freelancers.",
+      features: ["1 Event Creation", "20 GB Storage", "1 Year Validity", "AI Face Matching"]
     },
     {
       id: "pro",
       name: "Personal Pro",
       price: "₹999",
       period: "/month",
-      desc: "For full-time freelance photographers.",
-      features: ["Up to 10 Events", "100 GB Cloud Storage", "AI Face Matching", "Privacy Mode", "Priority AI Processing", "Custom Branding"]
+      desc: "For full-time freelancers.",
+      features: ["4 Events Creation", "60 GB Reusable Storage", "Team Collaboration (3 people)", "Custom Branding"]
     },
     {
-      id: "unlimited",
-      name: "Studio",
-      price: "₹2,499",
+      id: "studio_basic",
+      name: "Studio Basic",
+      price: "₹699",
       period: "/month",
-      desc: "For studios managing high-volume events.",
-      features: ["Unlimited Events", "500 GB Cloud Storage", "Branded Galleries", "Priority Support", "Multi-Photographer Workflows"]
+      desc: "For small studio teams.",
+      features: ["5 Events", "40 GB Storage", "Face Recognition", "AI Face Matching"]
+    },
+    {
+      id: "studio_pro",
+      name: "Studio Pro",
+      price: "₹1,599",
+      period: "/month",
+      desc: "For growing high-volume studios.",
+      features: ["Unlimited Events", "100 GB Storage", "Face Recognition", "Access (5 members)"]
+    },
+    {
+      id: "custom",
+      name: "Custom",
+      price: "Custom",
+      period: "",
+      desc: "For large studio agencies.",
+      features: ["Face Recognition", "Custom Domain", "Branding", "Access to all features"]
     },
   ];
 
   const [selectedPlan, setSelectedPlan] = useState<string>(currentPlan);
   const [loading, setLoading] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
-
-  useEffect(() => {
-    setSelectedPlan(currentPlan);
-  }, [currentPlan, isOpen]);
 
   if (!isOpen) return null;
 
@@ -77,6 +123,12 @@ function ChangePlanModal({
   };
 
   const handleUpdate = async () => {
+    if (selectedPlan === "custom") {
+      alert("Please contact our sales team at sales@spotme.photo to set up a custom plan.");
+      onClose();
+      return;
+    }
+
     if (selectedPlan === currentPlan) {
       alert("This is already your active plan tier.");
       onClose();
@@ -131,8 +183,10 @@ function ChangePlanModal({
       }
 
       const planLabelMap: Record<string, string> = {
+        starter: "Starter Plan",
         pro: "Personal Pro Plan",
-        unlimited: "Studio Plan",
+        studio_basic: "Studio Basic Plan",
+        studio_pro: "Studio Pro Plan",
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,7 +195,7 @@ function ChangePlanModal({
         amount: orderData.amount,
         currency: orderData.currency,
         order_id: orderData.orderId, // Real order ID from Razorpay
-        name: "Revela Photos",
+        name: "Spotme Photos",
         description: planLabelMap[selectedPlan] || "Plan Upgrade",
         theme: { color: "#D67D5C" },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,7 +258,7 @@ function ChangePlanModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-[#2D2D2D]/40 backdrop-blur-md" onClick={onClose} />
-        <div className="relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-[#2D2D2D]/8 bg-white/90 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 animate-page-enter">
+        <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-[#2D2D2D]/8 bg-white/90 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 animate-page-enter">
           <button onClick={onClose} className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 border border-[#2D2D2D]/6 hover:bg-[#FDF8F1] transition">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -213,7 +267,7 @@ function ChangePlanModal({
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#2D2D2D]">Change your plan</h2>
           <p className="mt-2 text-sm text-[#827970]">Select the pricing plan that best fits your photographer scale.</p>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             {plans.map((p) => (
               <button
                 key={p.id}
@@ -269,12 +323,15 @@ function ChangePlanModal({
               </p>
               <div className="mt-4 rounded-xl bg-[#FDF8F1] p-3 text-left space-y-1.5 text-xs text-[#574F49]">
                 <div className="flex justify-between">
-                  <span>Merchant:</span> <span className="font-semibold">Revela Photos</span>
+                  <span>Merchant:</span> <span className="font-semibold">Spotme Photos</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Amount:</span>{" "}
                   <span className="font-semibold">
-                    {selectedPlan === "pro" ? "₹999.00" : "₹2,499.00"}
+                    {selectedPlan === "starter" ? "₹499.00" :
+                     selectedPlan === "pro" ? "₹999.00" :
+                     selectedPlan === "studio_basic" ? "₹699.00" :
+                     selectedPlan === "studio_pro" ? "₹1,599.00" : "₹0.00"}
                   </span>
                 </div>
               </div>
@@ -303,9 +360,11 @@ function ChangePlanModal({
 function ChangePasswordModal({
   isOpen,
   onClose,
+  onUpdated,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onUpdated?: () => void;
 }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -376,9 +435,11 @@ function ChangePasswordModal({
       setNewPassword("");
       setConfirmPassword("");
       setShowPassword(false);
+      if (onUpdated) onUpdated();
       onClose();
-    } catch (err: any) {
-      setSubmitError(err.message || "Failed to update password.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update password.";
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }
@@ -485,9 +546,10 @@ export default function AccountPage() {
     id: string;
     full_name: string | null;
     email: string;
-    plan: "free" | "pro" | "unlimited";
+    plan: string;
     phone: string | null;
     bio: string | null;
+    updated_at?: string;
   } | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -513,22 +575,38 @@ export default function AccountPage() {
 
   useEffect(() => {
     loadProfile();
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("upgrade") === "true") {
+        setIsPlanOpen(true);
+      }
+    }
   }, []);
 
   const getPlanPriceLabel = (plan: string) => {
-    if (plan === "free") return "₹0 / month";
+    if (plan === "free") return "₹0 / year";
+    if (plan === "starter") return "₹499 / month";
     if (plan === "pro") return "₹999 / month";
-    return "₹2,499 / month";
+    if (plan === "studio_basic") return "₹699 / month";
+    if (plan === "studio_pro") return "₹1,599 / month";
+    return "Custom Price";
   };
 
   const getPlanNameLabel = (plan: string) => {
-    if (plan === "free") return "Starter";
+    if (plan === "free") return "Free Plan";
+    if (plan === "starter") return "Starter";
     if (plan === "pro") return "Personal Pro";
-    return "Studio Plan";
+    if (plan === "studio_basic") return "Studio Basic";
+    if (plan === "studio_pro") return "Studio Pro";
+    return "Custom Plan";
   };
 
+  const passwordDetail = profile?.updated_at 
+    ? formatRelativeTime(profile.updated_at)
+    : "Last changed recently";
+
   const securityRows = [
-    { label: "Change password", detail: "Last changed 3 months ago", icon: "lock", action: "Update" },
+    { label: "Change password", detail: passwordDetail, icon: "lock", action: "Update" },
   ];
 
   if (loading) {
@@ -675,6 +753,7 @@ export default function AccountPage() {
       <ChangePasswordModal
         isOpen={isPasswordOpen}
         onClose={() => setIsPasswordOpen(false)}
+        onUpdated={loadProfile}
       />
     </DashboardShell>
   );

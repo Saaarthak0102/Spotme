@@ -1,3 +1,4 @@
+
 // ============================================================
 // lib/auth-errors.ts — User-friendly auth error messages
 // Maps raw Supabase error messages to safe, human-readable text.

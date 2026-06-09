@@ -10,6 +10,7 @@ import {
   fetchGuestGalleryClient,
   getEventPrivacyMode,
 } from "@/lib/guest-data-client";
+import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
 import type { EventPhoto } from "@/types/database";
 
 // Tiny static blur placeholder for photos that don't have a blur_hash yet
@@ -362,11 +363,11 @@ export default function MyPhotosPage() {
                   className="group relative aspect-square overflow-hidden rounded-xl border border-slate-100 bg-slate-100/50 shadow-sm transition hover:shadow-md sm:rounded-2xl"
                 >
                   <Image
-                    src={
-                      (photo as EventPhoto & { thumb_url?: string }).thumb_url ??
-                      photo.public_url ??
-                      ""
-                    }
+                    src={getOptimizedStorageUrl(
+                      (photo as EventPhoto & { thumb_url?: string }).thumb_url ||
+                      photo.public_url,
+                      { quality: 75 }
+                    )}
                     alt={photo.original_filename ?? `Photo ${index + 1}`}
                     fill
                     sizes="(max-width: 640px) 50vw, 33vw"
@@ -457,10 +458,11 @@ export default function MyPhotosPage() {
           {/* Use medium_url in lightbox for quality balance */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={
-              (photos[lightboxIndex] as EventPhoto & { medium_url?: string })
-                .medium_url ?? photos[lightboxIndex].public_url ?? ""
-            }
+            src={getOptimizedStorageUrl(
+              (photos[lightboxIndex] as EventPhoto & { medium_url?: string }).medium_url ||
+              photos[lightboxIndex].public_url,
+              { quality: 80 }
+            )}
             alt={
               photos[lightboxIndex].original_filename ??
               `Photo ${lightboxIndex + 1}`

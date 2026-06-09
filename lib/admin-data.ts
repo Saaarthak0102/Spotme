@@ -131,19 +131,29 @@ export async function fetchEventTypeBreakdown(): Promise<{ type: string; count: 
 
 export async function fetchPlanDistribution(): Promise<{ plan: string; count: number }[]> {
   const supabase = getAdminClient();
-  const plans = ["free", "pro", "unlimited"];
-  const results = await Promise.all(
-    plans.map(async (p) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { count } = await (supabase as any)
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("role", "photographer")
-        .eq("plan", p);
-      return { plan: p, count: count ?? 0 };
-    })
-  );
-  return results;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("profiles")
+    .select("plan")
+    .eq("role", "photographer");
+
+  if (error || !data) return [];
+
+  // Count occurrences
+  const counts: Record<string, number> = {};
+  data.forEach((p: { plan: string }) => {
+    counts[p.plan] = (counts[p.plan] || 0) + 1;
+  });
+
+  // Ensure all active plans are represented, even with 0 counts, so they show up on the admin chart
+  const activePlans = ["free", "starter", "pro", "studio_basic", "studio_pro", "custom"];
+  activePlans.forEach((p) => {
+    if (counts[p] === undefined) {
+      counts[p] = 0;
+    }
+  });
+
+  return Object.entries(counts).map(([plan, count]) => ({ plan, count }));
 }
 
 export async function fetchMonthlyGrowth(): Promise<{ month: string; events: number; photos: number; guests: number }[]> {
@@ -370,9 +380,67 @@ export interface AdminEventRow extends Event {
   ownerEmail: string | null;
   photoCount: number;
   guestCount: number;
+  identifiedCount: number;
+  selfieCount: number;
+  totalFaces: number;
+  indexedPhotoCount: number;
+  totalStorageBytes: number;
+  totalProcessingTime: number;
 }
 
-export async function fetchAllEvents(limit = 20): Promise<AdminEventRow[]> {
+export interface AdminEventBasicRow {
+  id: string;
+  name: string;
+  event_date: string | null;
+  event_type: string;
+  venue: string | null;
+  status: string;
+  ownerName: string | null;
+  ownerEmail: string | null;
+}
+
+export async function fetchAllEventsBasic(limit = 1000): Promise<AdminEventBasicRow[]> {
+  const supabase = getAdminClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: events, error } = await (supabase as any)
+    .from("events")
+    .select("id, name, event_date, event_type, venue, status, owner_id")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !events?.length) return [];
+
+  const ownerIds = [...new Set((events as { owner_id: string }[]).map((e) => e.owner_id))];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profiles } = await (supabase as any)
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", ownerIds);
+
+  const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const emailMap: Record<string, string> = {};
+  (authData?.users ?? []).forEach((u) => { emailMap[u.id] = u.email ?? ""; });
+
+  const profileMap: Record<string, string> = {};
+  ((profiles as { id: string; full_name: string | null }[]) ?? []).forEach((p) => {
+    profileMap[p.id] = p.full_name ?? "";
+  });
+
+  return events.map((event: any) => ({
+    id: event.id,
+    name: event.name,
+    event_date: event.event_date,
+    event_type: event.event_type,
+    venue: event.venue,
+    status: event.status,
+    ownerName: profileMap[event.owner_id] ?? null,
+    ownerEmail: emailMap[event.owner_id] ?? null,
+  }));
+}
+
+export async function fetchAllEvents(limit = 10, offset = 0): Promise<AdminEventRow[]> {
   const supabase = getAdminClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -380,7 +448,7 @@ export async function fetchAllEvents(limit = 20): Promise<AdminEventRow[]> {
     .from("events")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error || !events?.length) return [];
 
@@ -403,12 +471,28 @@ export async function fetchAllEvents(limit = 20): Promise<AdminEventRow[]> {
 
   return await Promise.all(
     (events as Event[]).map(async (event) => {
-      const [photosRes, guestsRes] = await Promise.all([
+      const [photosRes, guestsRes, selfiesRes, matchesRes, facesRes, indexedPhotosRes, storageAndProcessingRes] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).from("event_photos").select("id", { count: "exact", head: true }).eq("event_id", event.id),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).from("guests").select("id", { count: "exact", head: true }).eq("event_id", event.id),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from("guest_selfies").select("id", { count: "exact", head: true }).eq("event_id", event.id),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from("photo_matches").select("guest_id").eq("event_id", event.id),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from("face_embeddings").select("id", { count: "exact", head: true }).eq("event_id", event.id),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from("event_photos").select("id", { count: "exact", head: true }).eq("event_id", event.id).eq("face_indexed", true),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).from("event_photos").select("file_size_bytes, processing_time").eq("event_id", event.id),
       ]);
+
+      const matchedGuestIds = new Set(((matchesRes.data as { guest_id: string }[]) ?? []).map((m) => m.guest_id));
+      const photoData = (storageAndProcessingRes.data as { file_size_bytes: number | null; processing_time: number | null }[]) ?? [];
+      
+      const totalStorageBytes = photoData.reduce((acc, p) => acc + (p.file_size_bytes ?? 0), 0);
+      const totalProcessingTime = photoData.reduce((acc, p) => acc + (p.processing_time ?? 0), 0);
 
       return {
         ...event,
@@ -416,6 +500,12 @@ export async function fetchAllEvents(limit = 20): Promise<AdminEventRow[]> {
         ownerEmail: emailMap[event.owner_id] ?? null,
         photoCount: photosRes.count ?? 0,
         guestCount: guestsRes.count ?? 0,
+        identifiedCount: matchedGuestIds.size,
+        selfieCount: selfiesRes.count ?? 0,
+        totalFaces: facesRes.count ?? 0,
+        indexedPhotoCount: indexedPhotosRes.count ?? 0,
+        totalStorageBytes,
+        totalProcessingTime,
       } as AdminEventRow;
     })
   );
@@ -424,9 +514,14 @@ export async function fetchAllEvents(limit = 20): Promise<AdminEventRow[]> {
 // ── Plan entitlement configuration (single source of truth) ─────────────────
 // Keep in sync with app/api/payments/upgrade/route.ts PLAN_CONFIG
 const PLAN_ENTITLEMENTS: Record<string, { maxEvents: number; maxStorageGb: number }> = {
-  free: { maxEvents: 1, maxStorageGb: 10 },
-  pro: { maxEvents: 10, maxStorageGb: 100 },
-  unlimited: { maxEvents: 999999, maxStorageGb: 1000 },
+  free:         { maxEvents: 1,      maxStorageGb: 5    },
+  starter:      { maxEvents: 1,      maxStorageGb: 20   },
+  pro:          { maxEvents: 4,      maxStorageGb: 60   },
+  studio_basic: { maxEvents: 5,      maxStorageGb: 40   },
+  studio_pro:   { maxEvents: 999999, maxStorageGb: 100  },
+  custom:       { maxEvents: 999999, maxStorageGb: 1000 },
+  // Backwards compatibility for legacy users in DB
+  unlimited:    { maxEvents: 999999, maxStorageGb: 1000 },
 };
 
 // -------------------------------------------------------
@@ -438,7 +533,8 @@ export async function createPhotographer(payload: {
   password: string;
   phone?: string;
   bio?: string;
-  plan?: "free" | "pro" | "unlimited";
+  plan?: "free" | "starter" | "pro" | "studio_basic" | "studio_pro" | "custom";
+  disabled_features?: string[];
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = getAdminClient();
 
@@ -464,6 +560,7 @@ export async function createPhotographer(payload: {
     plan,
     max_events: maxEvents,
     max_storage_gb: maxStorageGb,
+    disabled_features: payload.disabled_features ?? [],
   });
 
   return { success: true };
@@ -478,7 +575,8 @@ export async function updatePhotographer(
     full_name?: string;
     phone?: string;
     bio?: string;
-    plan?: "free" | "pro" | "unlimited";
+    plan?: "free" | "starter" | "pro" | "studio_basic" | "studio_pro" | "custom";
+    disabled_features?: string[];
   }
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getAdminClient();
@@ -551,6 +649,40 @@ export async function deleteInquiry(id: string): Promise<{ success: boolean; err
     .from("inquiries")
     .delete()
     .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// -------------------------------------------------------
+// System Settings — Global Feature Flags
+// -------------------------------------------------------
+export async function fetchGlobalSettings(): Promise<string[]> {
+  const supabase = getAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("system_settings")
+    .select("value")
+    .eq("key", "disabled_features")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("[lib/admin-data] Error fetching global settings:", error?.message);
+    return [];
+  }
+  return (data.value as string[]) ?? [];
+}
+
+export async function updateGlobalSettings(disabledFeatures: string[]): Promise<{ success: boolean; error?: string }> {
+  const supabase = getAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("system_settings")
+    .upsert({
+      key: "disabled_features",
+      value: disabledFeatures,
+      updated_at: new Date().toISOString(),
+    });
 
   if (error) return { success: false, error: error.message };
   return { success: true };

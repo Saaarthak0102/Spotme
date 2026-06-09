@@ -1,20 +1,30 @@
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
-const SECRET = process.env.GUEST_SESSION_SECRET || "spotme_guest_session_secret_default_32chars_revela";
+const DEV_SECRET = "spotme_guest_session_secret_default_32chars_spotme";
 
-// 7 days session duration in milliseconds
-const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000;
+function getGuestSessionSecret(): string {
+  const secret = process.env.GUEST_SESSION_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("GUEST_SESSION_SECRET must be configured in production");
+  }
+  return DEV_SECRET;
+}
+
+// 2 days session duration in milliseconds
+const SESSION_DURATION = 2 * 24 * 60 * 60 * 1000;
 
 interface CookiePayload {
   access: Record<string, number>; // eventId -> expiresAt
+  guests?: Record<string, string>; // eventId -> verified guestId
 }
 
 export function signEventToken(payload: CookiePayload): string {
   const payloadStr = JSON.stringify(payload);
   const payloadBase64 = Buffer.from(payloadStr).toString("base64");
   const signature = crypto
-    .createHmac("sha256", SECRET)
+    .createHmac("sha256", getGuestSessionSecret())
     .update(payloadBase64)
     .digest("hex");
   return `${payloadBase64}.${signature}`;
@@ -26,11 +36,18 @@ export function verifyEventToken(token: string): CookiePayload | null {
     if (!payloadBase64 || !signature) return null;
 
     const expectedSignature = crypto
-      .createHmac("sha256", SECRET)
+      .createHmac("sha256", getGuestSessionSecret())
       .update(payloadBase64)
       .digest("hex");
 
-    if (signature !== expectedSignature) return null;
+    const signatureBuffer = Buffer.from(signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    if (
+      signatureBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+    ) {
+      return null;
+    }
 
     const payload = JSON.parse(Buffer.from(payloadBase64, "base64").toString("utf-8")) as CookiePayload;
     if (!payload.access) return null;
@@ -61,4 +78,29 @@ export async function hasEventSession(eventId: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function getEventSessionGuestId(eventId: string): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const cookieValue = cookieStore.get("spotme_guest_session")?.value;
+    if (!cookieValue) return null;
+
+    const payload = verifyEventToken(cookieValue);
+    if (!payload) return null;
+
+    const expiresAt = payload.access[eventId];
+    if (!expiresAt || Date.now() > expiresAt) return null;
+
+    return payload.guests?.[eventId] ?? null;
+  } catch (err) {
+    console.error("getEventSessionGuestId cookie error:", err);
+    return null;
+  }
+}
+
+export async function hasGuestSessionFor(eventId: string, guestId: string): Promise<boolean> {
+  const sessionGuestId = await getEventSessionGuestId(eventId);
+  return sessionGuestId === guestId;
+}
+
 export { SESSION_DURATION };

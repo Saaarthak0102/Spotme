@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { EventPhoto } from "@/types/database";
 import { fetchGuestGalleryClient } from "@/lib/guest-data-client";
+import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
 
 // Fallback blur placeholder
 const FALLBACK_BLUR =
@@ -117,7 +118,7 @@ export function GalleryPageClient({
                     className={`group relative mb-2.5 block w-full overflow-hidden rounded-xl sm:mb-3 sm:rounded-2xl ${aspectClass}`}
                   >
                     <Image
-                      src={p.thumb_url ?? p.public_url ?? ""}
+                      src={getOptimizedStorageUrl(p.thumb_url || p.public_url, { quality: 75 })}
                       alt={p.original_filename ?? `Event photo ${index + 1}`}
                       fill
                       sizes="(max-width: 640px) 50vw, 33vw"
@@ -201,9 +202,11 @@ export function GalleryPageClient({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={
-              (photos[lightboxIndex] as PhotoWithVariants).medium_url ??
-              photos[lightboxIndex].public_url ??
-              ""
+              getOptimizedStorageUrl(
+                (photos[lightboxIndex] as PhotoWithVariants).medium_url ||
+                photos[lightboxIndex].public_url,
+                { quality: 80 }
+              )
             }
             alt={
               photos[lightboxIndex].original_filename ??

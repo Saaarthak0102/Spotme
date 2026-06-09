@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { hasEventSession } from "@/lib/guest-session";
+import { hasGuestSessionFor } from "@/lib/guest-session";
+import { checkCsrf, checkBodySize } from "@/lib/api-guard";
 
 /**
  * POST /api/selfie/upload-url
@@ -29,6 +30,14 @@ function getAdminClient() {
 }
 export async function POST(req: NextRequest) {
   try {
+    // F-09: CSRF check
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
+    // F-14: Body size limit
+    const sizeError = checkBodySize(req, 8 * 1024);
+    if (sizeError) return sizeError;
+
     const { eventId, guestId, ext: rawExt } = await req.json();
 
     if (!eventId || !guestId) {
@@ -38,8 +47,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify guest session cookie for this event
-    const isAuthorized = await hasEventSession(eventId);
+    // Verify this browser is bound to the requested guest for this event.
+    const isAuthorized = await hasGuestSessionFor(eventId, guestId);
     if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

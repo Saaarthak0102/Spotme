@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { EventWorkspaceShell, PageHeading } from "@/components/dashboard/shell";
-import { fetchEvent } from "@/lib/dashboard-data";
+import { checkEventAccess } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/server";
 
 // No more static params — fully dynamic routing
@@ -31,10 +31,21 @@ export async function WorkspacePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const event = await fetchEvent(eventId);
+  const access = await checkEventAccess(eventId);
 
-  if (!event) {
+  if (!access.event) {
     notFound();
+  }
+
+  if (access.isCollaborator) {
+    // Collaborators can only access uploads and gallery
+    if (activePath !== "/uploads" && activePath !== "/gallery") {
+      if (activePath === "") {
+        redirect(`/dashboard/events/${eventId}/gallery`);
+      } else {
+        notFound();
+      }
+    }
   }
 
   let userName: string | undefined;
@@ -49,7 +60,7 @@ export async function WorkspacePage({
   }
 
   return (
-    <EventWorkspaceShell event={event} activePath={activePath} userName={userName}>
+    <EventWorkspaceShell event={access.event} activePath={activePath} userName={userName} isCollaborator={access.isCollaborator}>
       <main className="p-4 sm:p-6 lg:p-9">
         <PageHeading eyebrow={eyebrow} title={title} detail={detail} action={action} />
         {children}

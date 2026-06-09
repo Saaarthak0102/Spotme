@@ -13,7 +13,7 @@ export type { Event as EventRecord, EventPhoto, Guest };
 // -------------------------------------------------------
 
 /**
- * Fetch all events owned by the current authenticated user.
+ * Fetch all events owned by the current authenticated user OR shared with them as collaborator.
  */
 export async function fetchEvents(): Promise<(Event & { photo_count?: number; guest_count?: number })[]> {
   const supabase = await createClient();
@@ -23,12 +23,22 @@ export async function fetchEvents(): Promise<(Event & { photo_count?: number; gu
 
   if (!user) return [];
 
-  // Fetch events with related photo and guest IDs to count them
-  const { data, error } = await (supabase as any)
-    .from("events")
-    .select("*, event_photos(id), guests(id)")
-    .eq("owner_id", user.id)
-    .order("created_at", { ascending: false });
+  // Fetch event IDs from event_collaborators where email matches user's email
+  const { data: collabEvents } = await (supabase as any)
+    .from("event_collaborators")
+    .select("event_id")
+    .eq("email", user.email);
+
+  const collabIds = (collabEvents ?? []).map((c: any) => c.event_id);
+
+  let query = (supabase as any).from("events").select("*, event_photos(id), guests(id)");
+  if (collabIds.length > 0) {
+    query = query.or(`owner_id.eq.${user.id},id.in.(${collabIds.join(",")})`);
+  } else {
+    query = query.eq("owner_id", user.id);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("fetchEvents error:", (error as { message: string }).message);
@@ -46,30 +56,56 @@ export async function fetchEvents(): Promise<(Event & { photo_count?: number; gu
 }
 
 /**
- * Fetch a single event by ID (owner-scoped for dashboard use).
+ * Check if the user is owner, collaborator, or has no access.
  */
-export async function fetchEvent(eventId: string): Promise<Event | null> {
+export async function checkEventAccess(eventId: string): Promise<{
+  isOwner: boolean;
+  isCollaborator: boolean;
+  event: Event | null;
+}> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  if (!user) return { isOwner: false, isCollaborator: false, event: null };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  // Fetch event (bypass owner filter)
+  const { data: event, error } = await (supabase as any)
     .from("events")
     .select("*")
     .eq("id", eventId)
-    .eq("owner_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (error) {
-    console.error("fetchEvent error:", error.message);
-    return null;
+  if (error || !event) {
+    return { isOwner: false, isCollaborator: false, event: null };
   }
 
-  return data as Event;
+  if (event.owner_id === user.id) {
+    return { isOwner: true, isCollaborator: false, event };
+  }
+
+  // Check if collaborator
+  const { data: collab } = await (supabase as any)
+    .from("event_collaborators")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("email", user.email)
+    .maybeSingle();
+
+  if (collab) {
+    return { isOwner: false, isCollaborator: true, event };
+  }
+
+  return { isOwner: false, isCollaborator: false, event: null };
+}
+
+/**
+ * Fetch a single event by ID (owner or collaborator scoped).
+ */
+export async function fetchEvent(eventId: string): Promise<Event | null> {
+  const access = await checkEventAccess(eventId);
+  return access.event;
 }
 
 /**
@@ -218,13 +254,22 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
   if (!user) return { totalEvents: 0, totalPhotos: 0, totalGuests: 0 };
 
-  // Fetch event IDs owned by this user
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: events } = await (supabase as any)
-    .from("events")
-    .select("id")
-    .eq("owner_id", user.id);
+  // Fetch event IDs owned by this user OR where they are a collaborator
+  const { data: collabEvents } = await (supabase as any)
+    .from("event_collaborators")
+    .select("event_id")
+    .eq("email", user.email);
 
+  const collabIds = (collabEvents ?? []).map((c: any) => c.event_id);
+
+  let query = (supabase as any).from("events").select("id");
+  if (collabIds.length > 0) {
+    query = query.or(`owner_id.eq.${user.id},id.in.(${collabIds.join(",")})`);
+  } else {
+    query = query.eq("owner_id", user.id);
+  }
+
+  const { data: events } = await query;
   const eventIds = ((events ?? []) as { id: string }[]).map((e) => e.id);
 
   const [photosRes, guestsRes] = await Promise.all([

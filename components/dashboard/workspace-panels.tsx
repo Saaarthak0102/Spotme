@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { Event as EventRecord, EventPhoto, Guest } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
+import { PlanLimitModal } from "./plan-limit-modal";
 
 /* ── Reusable Mini Stat Card ────────────────────── */
 function MiniStat({
@@ -32,6 +34,16 @@ function MiniStat({
   );
 }
 
+/* ── formatBytes Utility ─────────────────────────── */
+const formatBytes = (bytes: number) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+
 /* ═══════════════════════════════════════════════════
    Event Overview Panel
    ═══════════════════════════════════════════════════ */
@@ -54,6 +66,118 @@ export function EventOverviewPanel({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(photos.length === 50);
+
+  const [isCollabModalOpen, setIsCollabModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [userPlan, setUserPlan] = useState<string>("free");
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [disabledFeatures, setDisabledFeatures] = useState<string[]>([]);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+      if (user) {
+        const { data: profile } = await (supabase as any)
+          .from("profiles")
+          .select("plan, disabled_features")
+          .eq("id", user.id)
+          .single();
+        if (profile) {
+          setUserPlan(profile.plan || "free");
+        }
+
+        const { data: systemSettings } = await (supabase as any)
+          .from("system_settings")
+          .select("value")
+          .eq("key", "disabled_features")
+          .maybeSingle();
+
+        const userDisabled = profile?.disabled_features || [];
+        const globalDisabled = systemSettings?.value || [];
+        setDisabledFeatures([...new Set([...userDisabled, ...globalDisabled])]);
+      }
+    };
+    getSession();
+  }, []);
+
+  const isOwner = currentUser && event.owner_id === currentUser.id;
+
+  const fetchCollaborators = async () => {
+    const supabase = createClient();
+    const { data, error } = await (supabase as any)
+      .from("event_collaborators")
+      .select("*")
+      .eq("event_id", event.id);
+    if (!error && data) {
+      setCollaborators(data);
+    }
+  };
+
+  useEffect(() => {
+    if (isOwner) {
+      fetchCollaborators();
+    }
+  }, [isOwner]);
+
+  const handleAddCollaborator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteError(null);
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setInviteError("Please enter a valid email address.");
+      return;
+    }
+
+    if (collaborators.length >= 3) {
+      setInviteError("You can add a maximum of 3 collaborators.");
+      return;
+    }
+
+    if (collaborators.some(c => c.email === email)) {
+      setInviteError("This email already has access.");
+      return;
+    }
+
+    setInviteLoading(true);
+    const supabase = createClient();
+    const { error } = await (supabase as any)
+      .from("event_collaborators")
+      .insert({ event_id: event.id, email })
+      .select()
+      .single();
+
+    setInviteLoading(false);
+    if (error) {
+      setInviteError(error.message);
+    } else {
+      setInviteEmail("");
+      fetchCollaborators();
+    }
+  };
+
+  const handleRemoveCollaborator = async (id: string) => {
+    if (!confirm("Are you sure you want to remove access for this photographer?")) return;
+    const supabase = createClient();
+    const { error } = await (supabase as any)
+      .from("event_collaborators")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Failed to remove collaborator: " + error.message);
+    } else {
+      fetchCollaborators();
+    }
+  };
 
   useEffect(() => {
     setLocalPhotos(photos);
@@ -84,13 +208,7 @@ export function EventOverviewPanel({
   };
 
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+
 
   const totalSizeBytes = localPhotos.reduce((acc, p) => acc + (p.file_size_bytes ?? 0), 0);
   const totalSizeFormatted = formatBytes(totalSizeBytes);
@@ -104,24 +222,13 @@ export function EventOverviewPanel({
     if (!confirm("Are you sure you want to permanently delete this photo?")) return;
     setDeleteLoading(true);
     try {
-      const supabase = createClient();
-      const { error: storageError } = await supabase.storage
-        .from("event-photos")
-        .remove([photo.storage_path]);
-        
-      if (storageError) {
-        console.error("Storage delete warning:", storageError.message);
+      const res = await fetch(`/api/photos?id=${photo.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete photo");
       }
-      
-      const { error: dbError } = await (supabase as any)
-        .from("event_photos")
-        .delete()
-        .eq("id", photo.id);
-        
-      if (dbError) {
-        throw new Error(dbError.message);
-      }
-      
       setLocalPhotos((prev) => prev.filter((p) => p.id !== photo.id));
       setSelectedPhoto(null);
       router.refresh();
@@ -168,7 +275,18 @@ export function EventOverviewPanel({
 
       {/* Dynamic Folders Grid */}
       <div>
-        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#766D66]">Workspace Folders</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[#766D66]">Workspace Folders</h3>
+          {isOwner && !(userPlan === "free" || userPlan === "solo" || !userPlan) && !disabledFeatures.includes("collaborators") && (
+            <button
+              onClick={() => setIsCollabModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-[#2D2D2D]/8 bg-white/60 px-3.5 py-1.5 text-xs font-semibold text-[#B36144] hover:bg-[#FFF3EB] hover:border-[#D67D5C]/35 hover:shadow-[0_8px_24px_rgba(214,125,92,0.06)] transition"
+            >
+              <span className="material-symbols-outlined text-[16px]">groups</span>
+              Manage Collaborators {collaborators.length > 0 && `(${collaborators.length}/3)`}
+            </button>
+          )}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { name: "Event Photos", icon: "folder", count: `${photoCount} items`, size: totalSizeFormatted, color: "text-[#D67D5C] bg-[#D67D5C]/8", href: `${rootHref}/gallery` },
@@ -258,7 +376,7 @@ export function EventOverviewPanel({
                   >
                     <div
                       className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                      style={{ backgroundImage: `url("${photo.public_url}")` }}
+                      style={{ backgroundImage: `url("${getOptimizedStorageUrl(photo.thumb_url || photo.public_url, { quality: 75 })}")` }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
                     <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -368,7 +486,7 @@ export function EventOverviewPanel({
             <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[#2D2D2D]/5 bg-[#FDF8F1]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={selectedPhoto.public_url || ""}
+                src={getOptimizedStorageUrl(selectedPhoto.medium_url || selectedPhoto.public_url, { quality: 80 })}
                 alt={selectedPhoto.original_filename || "Preview"}
                 className="h-full w-full object-cover"
               />
@@ -441,6 +559,133 @@ export function EventOverviewPanel({
           </div>
         </div>
       )}
+
+      {/* Plan Limit Modal */}
+      {isLimitModalOpen && (
+        <PlanLimitModal
+          isOpen={isLimitModalOpen}
+          onClose={() => setIsLimitModalOpen(false)}
+          description="The Free Starter plan does not include event collaborators. Upgrade to the Pro plan to invite other photographers."
+        />
+      )}
+
+      {/* Collaborators Modal */}
+      {isCollabModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/35 backdrop-blur-md transition-opacity"
+            onClick={() => setIsCollabModalOpen(false)}
+          />
+
+          {/* Modal Container */}
+          <div className="relative w-full max-w-lg transform overflow-hidden rounded-[28px] border border-[#2D2D2D]/6 bg-white/95 p-6 shadow-2xl backdrop-blur-xl transition-all sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-[#2D2D2D]/5 pb-4 mb-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]">
+                  <span className="material-symbols-outlined text-[20px]">groups</span>
+                </span>
+                <div>
+                  <h3 className="text-base font-semibold tracking-tight text-[#2D2D2D]">Photographer Access</h3>
+                  <p className="text-xs text-[#827970] mt-0.5">Manage collaboration for {event.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCollabModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2D2D2D]/8 bg-white text-[#827970] hover:text-[#2D2D2D] transition"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-6">
+              <p className="text-xs leading-5 text-[#827970]">
+                Share this event workspace with other photographers. They can upload photos and view the gallery, but cannot modify settings, access code, or view guests.
+              </p>
+
+              {/* Invite Form */}
+              <form onSubmit={handleAddCollaborator} className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-grow">
+                  <input
+                    type="email"
+                    placeholder="photographer@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => {
+                      setInviteEmail(e.target.value);
+                      setInviteError(null);
+                    }}
+                    disabled={inviteLoading || collaborators.length >= 3}
+                    className="h-10 w-full rounded-xl border border-[#2D2D2D]/8 bg-white px-4 text-xs outline-none transition focus:border-[#D67D5C]/50 focus:shadow-[0_0_0_3px_rgba(214,125,92,0.08)] disabled:opacity-50"
+                  />
+                  {inviteError && (
+                    <p className="mt-1.5 text-[10px] font-semibold text-red-600">
+                      {inviteError}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={inviteLoading || !inviteEmail.trim() || collaborators.length >= 3}
+                  className="h-10 shrink-0 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-5 text-xs font-semibold text-white shadow-md hover:-translate-y-0.5 transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {inviteLoading ? (
+                    <><span className="material-symbols-outlined text-[14px] animate-spin">sync</span> Adding...</>
+                  ) : (
+                    <>Add ({collaborators.length}/3)</>
+                  )}
+                </button>
+              </form>
+
+              {/* List of collaborators */}
+              {collaborators.length > 0 ? (
+                <div className="overflow-hidden rounded-xl border border-[#2D2D2D]/5 bg-white/40">
+                  <table className="w-full text-left text-xs text-[#2D2D2D]">
+                    <thead className="bg-[#FCF9F5] text-[10px] uppercase tracking-wider text-[#92877F] border-b border-[#2D2D2D]/5">
+                      <tr>
+                        <th className="px-4 py-2.5">Email address</th>
+                        <th className="px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {collaborators.map((collab) => (
+                        <tr key={collab.id} className="border-b border-[#2D2D2D]/5 last:border-0 hover:bg-[#FDF8F1]/40 transition">
+                          <td className="px-4 py-3 font-medium flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[16px] text-[#827970]">person</span>
+                            <span>{collab.email}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 border border-orange-100 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-orange-600">
+                              Access Granted
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCollaborator(collab.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition"
+                              title="Revoke access"
+                            >
+                              <span className="material-symbols-outlined text-[16px] block">delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#2D2D2D]/8 bg-white/30 p-6 text-center text-[#827970] text-xs">
+                  <span className="material-symbols-outlined text-2xl text-[#D67D5C]/40 block mb-1.5">group_add</span>
+                  No other photographers have been given access to this event yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -448,109 +693,185 @@ export function EventOverviewPanel({
 /* ═══════════════════════════════════════════════════
    Uploads Panel — Real file upload to Supabase Storage
    ═══════════════════════════════════════════════════ */
+/* ── Persistent Upload Store ────────────────────── */
+interface PersistentQueueItem {
+  id: string;
+  file: File;
+  name: string;
+  progress: number;
+  state: "Pending" | "Uploading" | "Processed" | "Paused" | "Error";
+}
+
+interface UploadStore {
+  queue: PersistentQueueItem[];
+  isPaused: boolean;
+  isUploading: boolean;
+  listeners: Set<() => void>;
+  isUploadingWorkerRunning: boolean;
+}
+
+const globalUploadStores: Record<string, UploadStore> = {};
+
+function getUploadStore(eventId: string): UploadStore {
+  if (!globalUploadStores[eventId]) {
+    globalUploadStores[eventId] = {
+      queue: [],
+      isPaused: false,
+      isUploading: false,
+      listeners: new Set(),
+      isUploadingWorkerRunning: false,
+    };
+  }
+  return globalUploadStores[eventId];
+}
+
+function updateStore(eventId: string, updates: Partial<Omit<UploadStore, "listeners" | "isUploadingWorkerRunning">>) {
+  const store = getUploadStore(eventId);
+  Object.assign(store, updates);
+  store.listeners.forEach((listener) => listener());
+}
+
+async function runUploadWorker(eventId: string, routerRefresh: () => void) {
+  const store = getUploadStore(eventId);
+  if (store.isUploadingWorkerRunning) return;
+  store.isUploadingWorkerRunning = true;
+  updateStore(eventId, { isUploading: true });
+
+  const supabase = createClient();
+
+  while (true) {
+    if (store.isPaused) {
+      break;
+    }
+
+    const nextItem = store.queue.find((item) => item.state === "Pending");
+    if (!nextItem) {
+      break;
+    }
+
+    // Mark current item as Uploading
+    store.queue = store.queue.map((item) =>
+      item.id === nextItem.id ? { ...item, state: "Uploading" as const, progress: 0 } : item
+    );
+    updateStore(eventId, { queue: store.queue });
+
+    const file = nextItem.file;
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const storagePath = `${eventId}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+    let prog = 0;
+    const interval = setInterval(() => {
+      prog = Math.min(prog + 15, 90);
+      store.queue = store.queue.map((item) =>
+        item.id === nextItem.id ? { ...item, progress: prog } : item
+      );
+      updateStore(eventId, { queue: store.queue });
+    }, 150);
+
+    try {
+      const { error } = await supabase.storage
+        .from("event-photos")
+        .upload(storagePath, file, { upsert: true });
+
+      clearInterval(interval);
+
+      if (error) {
+        store.queue = store.queue.map((item) =>
+          item.id === nextItem.id ? { ...item, progress: 100, state: "Error" as const } : item
+        );
+        updateStore(eventId, { queue: store.queue });
+        continue;
+      }
+
+      const { data: urlData } = supabase.storage.from("event-photos").getPublicUrl(storagePath);
+      const res = await fetch("/api/photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          storage_path: storagePath,
+          public_url: urlData.publicUrl,
+          original_filename: file.name,
+          file_size_bytes: file.size,
+          mime_type: file.type,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to insert photo record");
+      }
+
+      store.queue = store.queue.map((item) =>
+        item.id === nextItem.id ? { ...item, progress: 100, state: "Processed" as const } : item
+      );
+      updateStore(eventId, { queue: store.queue });
+    } catch (err) {
+      clearInterval(interval);
+      console.error("Upload error:", err);
+      store.queue = store.queue.map((item) =>
+        item.id === nextItem.id ? { ...item, progress: 100, state: "Error" as const } : item
+      );
+      updateStore(eventId, { queue: store.queue });
+    }
+  }
+
+  store.isUploadingWorkerRunning = false;
+  updateStore(eventId, { isUploading: false });
+  routerRefresh();
+}
+
 export function UploadsPanel({ event, photos }: { event: EventRecord; photos: EventPhoto[] }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  interface QueueItem {
-    id: string;
-    file: File;
-    name: string;
-    progress: number;
-    state: "Pending" | "Uploading" | "Processed" | "Paused" | "Error";
-  }
 
-  const [uploadQueue, setUploadQueue] = useState<QueueItem[]>([]);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const store = getUploadStore(event.id);
+  const [uploadQueue, setUploadQueue] = useState<PersistentQueueItem[]>(store.queue);
+  const [isPaused, setIsPaused] = useState(store.isPaused);
+  const [isUploading, setIsUploading] = useState(store.isUploading);
   const [isDragging, setIsDragging] = useState(false);
 
-  const isPausedRef = useRef(false);
-  const isUploadingRef = useRef(false);
-  const queueRef = useRef<QueueItem[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<EventPhoto | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [localPhotos, setLocalPhotos] = useState<EventPhoto[]>(photos);
 
-  // Keep queueRef in sync with uploadQueue for the worker
   useEffect(() => {
-    queueRef.current = uploadQueue;
-  }, [uploadQueue]);
+    setLocalPhotos(photos);
+  }, [photos]);
 
-  const updateQueueItem = (id: string, updates: Partial<QueueItem>) => {
-    queueRef.current = queueRef.current.map((item) =>
-      item.id === id ? { ...item, ...updates } : item
-    );
-    setUploadQueue([...queueRef.current]);
-  };
+  useEffect(() => {
+    const handleStoreChange = () => {
+      setUploadQueue(store.queue);
+      setIsPaused(store.isPaused);
+      setIsUploading(store.isUploading);
+    };
 
-  const processQueue = async () => {
-    if (isUploadingRef.current) return;
-    isUploadingRef.current = true;
-    setIsUploading(true);
+    store.listeners.add(handleStoreChange);
+    handleStoreChange(); // Sync initial values on mount
 
-    const supabase = createClient();
+    return () => {
+      store.listeners.delete(handleStoreChange);
+    };
+  }, [store]);
 
-    while (true) {
-      if (isPausedRef.current) {
-        break;
+  const handleDeletePhoto = async (photo: EventPhoto) => {
+    if (!confirm("Are you sure you want to permanently delete this photo?")) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/photos?id=${photo.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete photo");
       }
-
-      const nextItem = queueRef.current.find((item) => item.state === "Pending");
-      if (!nextItem) {
-        break;
-      }
-
-      updateQueueItem(nextItem.id, { state: "Uploading", progress: 0 });
-
-      const file = nextItem.file;
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const storagePath = `${event.id}/${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
-
-      let prog = 0;
-      const interval = setInterval(() => {
-        prog = Math.min(prog + 15, 90);
-        updateQueueItem(nextItem.id, { progress: prog });
-      }, 150);
-
-      try {
-        const { error } = await supabase.storage
-          .from("event-photos")
-          .upload(storagePath, file, { upsert: true });
-
-        clearInterval(interval);
-
-        if (error) {
-          updateQueueItem(nextItem.id, { progress: 100, state: "Error" });
-          continue;
-        }
-
-        const { data: urlData } = supabase.storage.from("event-photos").getPublicUrl(storagePath);
-        const res = await fetch("/api/photos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event_id: event.id,
-            storage_path: storagePath,
-            public_url: urlData.publicUrl,
-            original_filename: file.name,
-            file_size_bytes: file.size,
-            mime_type: file.type,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to insert photo record");
-        }
-
-        updateQueueItem(nextItem.id, { progress: 100, state: "Processed" });
-      } catch (err) {
-        clearInterval(interval);
-        console.error("Upload error:", err);
-        updateQueueItem(nextItem.id, { progress: 100, state: "Error" });
-      }
+      setLocalPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      setSelectedPhoto(null);
+      router.refresh();
+    } catch (err: any) {
+      alert("Failed to delete photo: " + err.message);
+    } finally {
+      setDeleteLoading(false);
     }
-
-    isUploadingRef.current = false;
-    setIsUploading(false);
-    router.refresh();
   };
 
   const uploadFiles = (files: FileList) => {
@@ -564,39 +885,32 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
       state: "Pending" as const,
     }));
 
-    queueRef.current = [...queueRef.current, ...queueEntries];
-    setUploadQueue([...queueRef.current]);
+    const nextQueue = [...store.queue, ...queueEntries];
+    updateStore(event.id, { queue: nextQueue });
 
-    processQueue();
+    runUploadWorker(event.id, () => router.refresh());
   };
 
   const handlePause = () => {
-    isPausedRef.current = true;
-    setIsPaused(true);
-    queueRef.current = queueRef.current.map((item) =>
+    const nextQueue = store.queue.map((item) =>
       item.state === "Pending" ? { ...item, state: "Paused" as const } : item
     );
-    setUploadQueue([...queueRef.current]);
+    updateStore(event.id, { isPaused: true, queue: nextQueue });
   };
 
   const handleResume = () => {
-    isPausedRef.current = false;
-    setIsPaused(false);
-    queueRef.current = queueRef.current.map((item) =>
+    const nextQueue = store.queue.map((item) =>
       item.state === "Paused" ? { ...item, state: "Pending" as const } : item
     );
-    setUploadQueue([...queueRef.current]);
-    processQueue();
+    updateStore(event.id, { isPaused: false, queue: nextQueue });
+    runUploadWorker(event.id, () => router.refresh());
   };
 
   const handleCancel = () => {
-    isPausedRef.current = true;
-    setIsPaused(false);
-    queueRef.current = queueRef.current.filter(
+    const nextQueue = store.queue.filter(
       (item) => item.state === "Processed" || item.state === "Error"
     );
-    setUploadQueue([...queueRef.current]);
-    isPausedRef.current = false;
+    updateStore(event.id, { queue: nextQueue, isPaused: false });
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -777,9 +1091,9 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
       <section className="rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 p-5 backdrop-blur-xl xl:col-span-2 sm:p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold tracking-[-0.04em] sm:text-lg">
-            Event photos <span className="ml-2 text-sm font-normal text-[#827970]">({photos.length} total)</span>
+            Event photos <span className="ml-2 text-sm font-normal text-[#827970]">({localPhotos.length} total)</span>
           </h2>
-          {photos.length > 0 && (
+          {localPhotos.length > 0 && (
             <Link
               href={`/dashboard/events/${event.id}/gallery`}
               className="flex items-center gap-1 text-xs font-semibold text-[#D67D5C] hover:text-[#C46A4A] transition"
@@ -789,15 +1103,19 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
             </Link>
           )}
         </div>
-        {photos.length === 0 ? (
+        {localPhotos.length === 0 ? (
           <p className="mt-4 text-sm text-[#827970]">No photos uploaded yet. Drop files above to get started.</p>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 sm:mt-5 sm:gap-4">
-            {photos.slice(0, 8).map((photo) => (
-              <div key={photo.id} className="group relative h-32 overflow-hidden rounded-2xl sm:h-40">
+            {localPhotos.slice(0, 8).map((photo) => (
+              <div
+                key={photo.id}
+                onClick={() => setSelectedPhoto(photo)}
+                className={`group relative h-32 cursor-pointer overflow-hidden rounded-2xl sm:h-40 border border-[#2D2D2D]/5 transition-all hover:-translate-y-0.5 hover:shadow-md ${selectedPhoto?.id === photo.id ? "ring-2 ring-[#D67D5C]" : ""}`}
+              >
                 <div
                   className="absolute inset-0 bg-cover bg-center transition-transform duration-500 will-change-transform group-hover:scale-105"
-                  style={{ backgroundImage: `url("${photo.public_url}")` }}
+                  style={{ backgroundImage: `url("${getOptimizedStorageUrl(photo.thumb_url || photo.public_url, { quality: 75 })}")` }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               </div>
@@ -805,6 +1123,101 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
           </div>
         )}
       </section>
+
+      {/* File Detail Sidebar (Slide-out panel) */}
+      {selectedPhoto && (
+        <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm border-l border-[#2D2D2D]/8 bg-white/95 p-6 shadow-2xl backdrop-blur-2xl flex-col animate-slide-in">
+          <div className="flex items-center justify-between border-b border-[#2D2D2D]/5 pb-4">
+            <h3 className="text-sm font-semibold text-[#2D2D2D] flex items-center gap-1.5 font-sans">
+              <span className="material-symbols-outlined text-[18px]">info</span>
+              File Details
+            </h3>
+            <button
+              onClick={() => setSelectedPhoto(null)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#FDF8F1] text-[#625D58] border border-[#2D2D2D]/5 transition"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+
+          <div className="mt-6 flex-1 overflow-y-auto space-y-5 pr-1 font-sans">
+            {/* Image Preview */}
+            <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[#2D2D2D]/5 bg-[#FDF8F1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getOptimizedStorageUrl(selectedPhoto.medium_url || selectedPhoto.public_url, { quality: 80 })}
+                alt={selectedPhoto.original_filename || "Preview"}
+                className="h-full w-full object-cover"
+              />
+            </div>
+
+            {/* Properties List */}
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">File name</p>
+                <p className="mt-1 font-medium text-[#2D2D2D] break-all">{selectedPhoto.original_filename}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Size</p>
+                <p className="mt-1 font-medium text-[#2D2D2D]">{formatBytes(selectedPhoto.file_size_bytes ?? 0)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Mime type</p>
+                <p className="mt-1 font-medium text-[#2D2D2D]">{selectedPhoto.mime_type || "image/jpeg"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Uploaded</p>
+                <p className="mt-1 font-medium text-[#2D2D2D]">
+                  {new Date(selectedPhoto.uploaded_at).toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Storage Path</p>
+                <p className="mt-1 text-[11px] font-mono text-[#827970] break-all">{selectedPhoto.storage_path}</p>
+              </div>
+            </div>
+
+            {/* Face matching metadata */}
+            <div className="rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF6F1] p-4 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-[#B36144]">
+                <span className="material-symbols-outlined text-[16px]">face</span>
+                AI Face Matching Status
+              </div>
+              <p className="mt-1.5 text-[#827970] leading-relaxed">
+                This image has been indexed and is ready for facial recognition. Guests scanning the event QR can match and receive it instantly on WhatsApp.
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="mt-6 flex gap-2 border-t border-[#2D2D2D]/5 pt-4 font-sans">
+            <a
+              href={selectedPhoto.public_url || ""}
+              download={selectedPhoto.original_filename || "download"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center rounded-xl border border-[#DED5CC] py-3 text-xs font-semibold text-[#625D58] hover:bg-[#FDF8F1] active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">download</span>
+              Download
+            </a>
+            <button
+              onClick={() => handleDeletePhoto(selectedPhoto)}
+              disabled={deleteLoading}
+              className="flex-1 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 py-3 text-xs font-semibold text-red-600 active:scale-[0.98] transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              {deleteLoading ? (
+                <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  Delete
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -918,7 +1331,7 @@ export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount:
     setOrigin(window.location.origin);
   }, []);
 
-  const eventUrl = `${origin || "https://spotme.revela.com"}/event/${event.id}`;
+  const eventUrl = `${origin || "https://spotme.app"}/event/${event.id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(eventUrl);
@@ -1016,15 +1429,40 @@ export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount:
    Gallery Panel — Real photos from Supabase Storage
    ═══════════════════════════════════════════════════ */
 export function GalleryPanel({ eventId, photos }: { eventId: string; photos: EventPhoto[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [localPhotos, setLocalPhotos] = useState<EventPhoto[]>(photos);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(photos.length === 10000);
 
+  const [selectedPhoto, setSelectedPhoto] = useState<EventPhoto | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   useEffect(() => {
     setLocalPhotos(photos);
     setHasMore(photos.length === 10000);
   }, [photos]);
+
+  const handleDeletePhoto = async (photo: EventPhoto) => {
+    if (!confirm("Are you sure you want to permanently delete this photo?")) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/photos?id=${photo.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to delete photo");
+      }
+      setLocalPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      setSelectedPhoto(null);
+      router.refresh();
+    } catch (err: any) {
+      alert("Failed to delete photo: " + err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -1085,11 +1523,12 @@ export function GalleryPanel({ eventId, photos }: { eventId: string; photos: Eve
             {filteredPhotos.map((photo, index) => (
               <article
                 key={photo.id}
-                className={`group relative mb-3 overflow-hidden rounded-2xl sm:mb-4 ${index % 3 === 0 ? "h-[260px] sm:h-[330px]" : "h-[190px] sm:h-[235px]"}`}
+                onClick={() => setSelectedPhoto(photo)}
+                className={`group relative mb-3 overflow-hidden rounded-2xl sm:mb-4 cursor-pointer hover:shadow-lg transition-all ${selectedPhoto?.id === photo.id ? "ring-2 ring-[#D67D5C]" : ""} ${index % 3 === 0 ? "h-[260px] sm:h-[330px]" : "h-[190px] sm:h-[235px]"}`}
               >
                 <div
                   className="absolute inset-0 bg-cover bg-center transition-transform duration-500 will-change-transform group-hover:scale-105"
-                  style={{ backgroundImage: `url("${photo.public_url}")` }}
+                  style={{ backgroundImage: `url("${getOptimizedStorageUrl(photo.thumb_url || photo.public_url, { quality: 75 })}")` }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1117,6 +1556,101 @@ export function GalleryPanel({ eventId, photos }: { eventId: string; photos: Eve
           )}
         </>
       )}
+
+      {/* File Detail Sidebar (Slide-out panel) */}
+      {selectedPhoto && (
+        <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-sm border-l border-[#2D2D2D]/8 bg-white/95 p-6 shadow-2xl backdrop-blur-2xl flex-col animate-slide-in">
+          <div className="flex items-center justify-between border-b border-[#2D2D2D]/5 pb-4">
+            <h3 className="text-sm font-semibold text-[#2D2D2D] flex items-center gap-1.5 font-sans">
+              <span className="material-symbols-outlined text-[18px]">info</span>
+              File Details
+            </h3>
+            <button
+              onClick={() => setSelectedPhoto(null)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[#FDF8F1] text-[#625D58] border border-[#2D2D2D]/5 transition"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+
+          <div className="mt-6 flex-1 overflow-y-auto space-y-5 pr-1 font-sans">
+            {/* Image Preview */}
+            <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[#2D2D2D]/5 bg-[#FDF8F1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getOptimizedStorageUrl(selectedPhoto.medium_url || selectedPhoto.public_url, { quality: 80 })}
+                alt={selectedPhoto.original_filename || "Preview"}
+                className="h-full w-full object-cover"
+              />
+            </div>
+
+            {/* Properties List */}
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">File name</p>
+                <p className="mt-1 font-medium text-[#2D2D2D] break-all">{selectedPhoto.original_filename}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Size</p>
+                <p className="mt-1 font-medium text-[#2D2D2D]">{formatBytes(selectedPhoto.file_size_bytes ?? 0)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Mime type</p>
+                <p className="mt-1 font-medium text-[#2D2D2D]">{selectedPhoto.mime_type || "image/jpeg"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Uploaded</p>
+                <p className="mt-1 font-medium text-[#2D2D2D]">
+                  {new Date(selectedPhoto.uploaded_at).toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-semibold text-[#9A9087]">Storage Path</p>
+                <p className="mt-1 text-[11px] font-mono text-[#827970] break-all">{selectedPhoto.storage_path}</p>
+              </div>
+            </div>
+
+            {/* Face matching metadata */}
+            <div className="rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF6F1] p-4 text-xs">
+              <div className="flex items-center gap-2 font-semibold text-[#B36144]">
+                <span className="material-symbols-outlined text-[16px]">face</span>
+                AI Face Matching Status
+              </div>
+              <p className="mt-1.5 text-[#827970] leading-relaxed">
+                This image has been indexed and is ready for facial recognition. Guests scanning the event QR can match and receive it instantly on WhatsApp.
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="mt-6 flex gap-2 border-t border-[#2D2D2D]/5 pt-4 font-sans">
+            <a
+              href={selectedPhoto.public_url || ""}
+              download={selectedPhoto.original_filename || "download"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center rounded-xl border border-[#DED5CC] py-3 text-xs font-semibold text-[#625D58] hover:bg-[#FDF8F1] active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">download</span>
+              Download
+            </a>
+            <button
+              onClick={() => handleDeletePhoto(selectedPhoto)}
+              disabled={deleteLoading}
+              className="flex-1 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 py-3 text-xs font-semibold text-red-600 active:scale-[0.98] transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              {deleteLoading ? (
+                <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  Delete
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1130,6 +1664,36 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
     (event as EventRecord & { privacy_mode?: boolean }).privacy_mode ?? false
   );
   const [privacyLoading, setPrivacyLoading] = useState(false);
+  const [disabledFeatures, setDisabledFeatures] = useState<string[]>([]);
+
+  useEffect(() => {
+    const checkFeatures = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await (supabase as any)
+          .from("profiles")
+          .select("disabled_features")
+          .eq("id", user.id)
+          .single();
+
+        const { data: systemSettings } = await (supabase as any)
+          .from("system_settings")
+          .select("value")
+          .eq("key", "disabled_features")
+          .maybeSingle();
+
+        const userDisabled = profile?.disabled_features || [];
+        const globalDisabled = systemSettings?.value || [];
+        setDisabledFeatures([...new Set([...userDisabled, ...globalDisabled])]);
+      } catch (err) {
+        console.error("Error loading features:", err);
+      }
+    };
+    checkFeatures();
+  }, []);
 
   const handleTogglePrivacy = async () => {
     const newMode = !privacyMode;
@@ -1228,11 +1792,18 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
                   )}
                 </div>
                 <p className="mt-1 text-xs leading-5 text-[#827970]">
-                  {privacyMode
-                    ? "Guests are redirected directly to Find Me. No one can browse the general gallery — photos are only revealed after selfie matching."
-                    : "When enabled, guests skip the gallery entirely. They must upload a selfie to see only the photos they appear in, protecting everyone's privacy."}
+                  {disabledFeatures.includes("privacy_mode") ? (
+                    <span className="text-red-500 font-semibold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">info</span>
+                      This feature is disabled by system administrator.
+                    </span>
+                  ) : privacyMode ? (
+                    "Guests are redirected directly to Find Me. No one can browse the general gallery — photos are only revealed after selfie matching."
+                  ) : (
+                    "When enabled, guests skip the gallery entirely. They must upload a selfie to see only the photos they appear in, protecting everyone's privacy."
+                  )}
                 </p>
-                {privacyMode && (
+                {privacyMode && !disabledFeatures.includes("privacy_mode") && (
                   <div className="mt-3 space-y-1.5">
                     {[
                       "Gallery page hidden — redirect to Find Me",
@@ -1252,16 +1823,16 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
             {/* Toggle switch */}
             <button
               onClick={handleTogglePrivacy}
-              disabled={privacyLoading}
+              disabled={privacyLoading || disabledFeatures.includes("privacy_mode")}
               aria-label="Toggle Privacy Mode"
               className={`relative mt-0.5 h-7 w-13 shrink-0 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:opacity-60 ${
-                privacyMode ? "bg-violet-500" : "bg-[#DED5CC]"
+                privacyMode && !disabledFeatures.includes("privacy_mode") ? "bg-violet-500" : "bg-[#DED5CC]"
               }`}
               style={{ minWidth: "52px" }}
             >
               <span
                 className={`absolute top-[3px] left-[3px] h-[22px] w-[22px] rounded-full bg-white shadow-md transition-transform duration-300 ${
-                  privacyMode ? "translate-x-[25px]" : "translate-x-0"
+                  privacyMode && !disabledFeatures.includes("privacy_mode") ? "translate-x-[25px]" : "translate-x-0"
                 }`}
               />
               {privacyLoading && (
@@ -1275,7 +1846,20 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
 
         {/* ── Other settings ───────────────────────────── */}
         <section className="overflow-hidden rounded-[26px] border border-[#2D2D2D]/6 bg-white/60 backdrop-blur-xl">
-          {settings.map((setting) => (
+          {[
+            { title: "Event visibility", description: "Allow guests with QR access to view matching images.", action: "Public to guests", icon: "visibility", disabled: false },
+            { title: "Gallery expiration", description: "Automatically archive delivered galleries after the event.", action: "30 days", icon: "schedule", disabled: false },
+            { 
+              title: "Branding settings", 
+              description: disabledFeatures.includes("custom_branding") 
+                ? "This feature is disabled by system administrator." 
+                : "Logo, accent and delivery message shown to guests.", 
+              action: disabledFeatures.includes("custom_branding") ? "Locked" : "Customize", 
+              icon: "palette", 
+              disabled: disabledFeatures.includes("custom_branding") 
+            },
+            { title: "Reset QR access", description: "Issue a new QR code and expire all previous entry links.", action: "Reset code", icon: "qr_code_2", disabled: false },
+          ].map((setting) => (
             <div className="flex flex-col gap-3 border-b border-[#2D2D2D]/6 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:p-6" key={setting.title}>
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDF8F1] to-[#FFF3EB] text-[#B36144]">
@@ -1283,10 +1867,22 @@ export function SettingsPanel({ event }: { event: EventRecord }) {
                 </span>
                 <div>
                   <h2 className="text-sm font-semibold">{setting.title}</h2>
-                  <p className="mt-1 text-xs leading-5 text-[#827970]">{setting.description}</p>
+                  <p className={`mt-1 text-xs leading-5 ${setting.disabled ? "text-red-500 font-semibold" : "text-[#827970]"}`}>
+                    {setting.disabled && (
+                      <span className="inline-flex items-center gap-1.5 mr-1 align-middle text-red-500">
+                        <span className="material-symbols-outlined text-[13px]">info</span>
+                      </span>
+                    )}
+                    {setting.description}
+                  </p>
                 </div>
               </div>
-              <button className="w-fit shrink-0 rounded-xl border border-[#DED5CC] px-4 py-2.5 text-xs font-semibold text-[#625D58] transition hover:bg-[#FDF8F1]">{setting.action}</button>
+              <button 
+                disabled={setting.disabled}
+                className={`w-fit shrink-0 rounded-xl border border-[#DED5CC] px-4 py-2.5 text-xs font-semibold text-[#625D58] transition ${setting.disabled ? "opacity-50 cursor-not-allowed bg-stone-100" : "hover:bg-[#FDF8F1]"}`}
+              >
+                {setting.action}
+              </button>
             </div>
           ))}
         </section>

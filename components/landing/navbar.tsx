@@ -9,7 +9,6 @@ export default function Header() {
   const navLinks = [
     { label: "Home", href: "/" },
     { label: "Pricing", href: "/pricing" },
-    { label: "Our Story", href: "/about" },
     { label: "Contact", href: "/contact" },
   ];
 
@@ -17,11 +16,11 @@ export default function Header() {
     <header className="w-full sticky top-0 bg-surface/80 backdrop-blur-md border-b border-outline-variant/10 transition-all duration-300 z-[101]">
       {/* Increased shadow to shadow-lg, and set z-[101] for strong elevation on z axis */}
       <nav className="flex justify-between items-center px-margin-desktop py-4 max-w-container-max mx-auto">
-        
+
         {/* Left side: Logo */}
         <div className="flex-shrink-0">
           <Link href="/" className="font-serif text-3xl font-bold text-primary italic tracking-tight">
-            Revela
+            Spotme
           </Link>
         </div>
 
@@ -33,11 +32,10 @@ export default function Header() {
               <Link
                 key={link.label}
                 href={link.href}
-                className={`font-sans text-[15px] font-medium transition-colors duration-200 nav-underline pb-1 ${
-                  isActive
+                className={`font-sans text-[15px] font-medium transition-colors duration-200 nav-underline pb-1 ${isActive
                     ? "text-primary font-semibold border-b-2 border-primary"
                     : "text-on-surface-variant hover:text-primary"
-                }`}
+                  }`}
               >
                 {link.label}
               </Link>

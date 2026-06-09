@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { hasEventSession } from "@/lib/guest-session";
+import { hasGuestSessionFor } from "@/lib/guest-session";
 
 // Service role client needed because anon RLS read is disabled for security
 const adminClient = createClient(
@@ -20,13 +20,21 @@ export async function GET(
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
   }
 
-  // Verify guest session cookie for this event
-  const isAuthorized = await hasEventSession(eventId);
+  // Verify this browser is bound to the requested guest for this event.
+  const isAuthorized = await hasGuestSessionFor(eventId, guestId);
   if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    // Fetch event details to determine hackathon / privacy status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: eventData } = await (adminClient as any)
+      .from("events")
+      .select("event_type, privacy_mode")
+      .eq("id", eventId)
+      .maybeSingle();
+
     // 1. Fetch latest selfie
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: selfieData } = await (adminClient as any)
@@ -44,6 +52,8 @@ export async function GET(
         selfieUrl: null,
         status: null,
         matchCount: 0,
+        eventType: eventData?.event_type || "other",
+        privacyMode: eventData?.privacy_mode || false,
       });
     }
 
@@ -96,6 +106,8 @@ export async function GET(
       selfieUrl: selfieData.public_url,
       status,
       matchCount: count || 0,
+      eventType: eventData?.event_type || "other",
+      privacyMode: eventData?.privacy_mode || false,
     });
   } catch (err) {
     console.error("[guest/status] Error:", err);

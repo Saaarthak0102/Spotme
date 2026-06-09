@@ -68,7 +68,7 @@ export function HeroSummary({
 /* ═══════════════════════════════════════════════════
    Event Card — Individual Event Tile
    ═══════════════════════════════════════════════════ */
-export function EventCard({ event, photoCount, guestCount }: { event: EventRecord; photoCount?: number; guestCount?: number }) {
+export function EventCard({ event, photoCount, guestCount, isCollaborator = false }: { event: EventRecord; photoCount?: number; guestCount?: number; isCollaborator?: boolean }) {
   return (
     <article className="group overflow-hidden rounded-[26px] border border-[#2D2D2D]/6 bg-white/65 shadow-[0_10px_28px_rgba(45,45,45,0.04)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(214,125,92,0.08)]">
       {/* Cover image */}
@@ -84,6 +84,14 @@ export function EventCard({ event, photoCount, guestCount }: { event: EventRecor
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#2D2D2D]/50 via-[#2D2D2D]/10 to-transparent" />
+        
+        {isCollaborator && (
+          <span className="absolute top-3 left-3 rounded-full bg-[#D67D5C] px-2.5 py-1 text-[10px] font-semibold text-white shadow-md flex items-center gap-1.5 backdrop-blur-md">
+            <span className="material-symbols-outlined text-[13px]">handshake</span>
+            Shared
+          </span>
+        )}
+        
         <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-medium text-[#625D58] backdrop-blur-md sm:bottom-4 sm:right-4 sm:px-3 sm:py-1.5 sm:text-[11px]">
           QR {event.qr_active ? "Active" : "Draft"}
         </span>
@@ -147,6 +155,19 @@ function EventsGridContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams ? searchParams.get("search") || "" : "";
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleSearch = (val: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -200,6 +221,7 @@ function EventsGridContent({
               key={event.id}
               photoCount={event.photo_count}
               guestCount={event.guest_count}
+              isCollaborator={currentUserId ? event.owner_id !== currentUserId : false}
             />
           ))}
         </div>

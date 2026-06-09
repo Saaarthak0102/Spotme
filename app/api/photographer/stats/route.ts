@@ -173,6 +173,7 @@ export async function GET() {
       max_events: profile.max_events,
       max_storage_gb: profile.max_storage_gb,
       avatar_url: profile.avatar_url,
+      updated_at: user.updated_at || profile.updated_at,
     },
     stats: {
       totalEvents: events.length,

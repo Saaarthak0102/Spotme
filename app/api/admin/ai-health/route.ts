@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin-data";
+import { aiServiceHeaders, resolveAiServiceUrl } from "@/lib/ai-service";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,18 +18,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // S-08 fix: AI_SERVICE_URL is server-only (no NEXT_PUBLIC_ prefix)
-  let aiServiceUrl = (
-    process.env.AI_SERVICE_URL ?? process.env.NEXT_PUBLIC_AI_SERVICE_URL ?? "http://127.0.0.1:8000"
-  ).replace(/\/+$/, "");
-
-  if (aiServiceUrl.includes("://0.0.0.0")) {
-    aiServiceUrl = aiServiceUrl.replace("://0.0.0.0", "://127.0.0.1");
+  const aiServiceUrl = resolveAiServiceUrl();
+  if (!aiServiceUrl) {
+    return NextResponse.json(
+      { status: "misconfigured", error: "AI_SERVICE_URL is not a valid private address." },
+      { status: 500 }
+    );
   }
 
   try {
     const res = await fetch(`${aiServiceUrl}/health`, {
       method: "GET",
+      headers: aiServiceHeaders(),
       signal: AbortSignal.timeout(3000), // 3s timeout
     });
 
@@ -39,10 +40,13 @@ export async function GET(req: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {
-    console.error("[ai-health route] Failed to fetch live AI health:", err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    const errorName = err instanceof Error ? err.name : "UnknownError";
+    console.warn(`[ai-health route] AI service health check failed (${errorName}: ${errorMsg})`);
     return NextResponse.json({
       status: "offline",
       error: "AI service is offline or unreachable."
     }, { status: 503 });
   }
 }
+

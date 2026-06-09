@@ -106,7 +106,7 @@ export default function UpdatePassword() {
       <main className="flex-grow flex items-center justify-center py-20 px-margin-mobile">
         <div className="w-full max-w-md bg-surface-container-lowest p-8 md:p-12 rounded-[32px] soft-lift border border-outline-variant/10 animate-fade-in">
           <div className="text-center mb-8">
-            <span className="font-serif text-3xl font-bold text-primary italic">Revela</span>
+            <span className="font-serif text-3xl font-bold text-primary italic">Spotme</span>
             <h1 className="text-2xl font-serif font-bold text-on-surface mt-4">New password</h1>
             <p className="text-sm text-on-surface-variant mt-2">
               Create a strong new password for your account.

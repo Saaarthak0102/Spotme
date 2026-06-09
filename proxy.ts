@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
@@ -55,16 +56,43 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Protect admin routes — redirect to login if unauthenticated
-    // (role check happens inside the page via requireAdmin)
-    if (
-      !user &&
-      request.nextUrl.pathname.startsWith("/admin")
-    ) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
+    // ── F-10 Fix: Protect admin routes — check BOTH auth AND role in middleware ──
+    // Previously only authentication was checked; role was deferred to the page.
+    // Now we gate on role at the middleware layer so no RSC data leaks.
+    if (request.nextUrl.pathname.startsWith("/admin")) {
+      if (!user) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+
+      // Role check via service-role client (bypasses RLS so it's always accurate)
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceKey) {
+        const adminDb = createAdminClient(supabaseUrl, serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data: profile } = await adminDb
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if ((profile as { role: string } | null)?.role !== "admin") {
+          // Authenticated but not an admin — redirect to dashboard
+          const url = request.nextUrl.clone();
+          url.pathname = "/dashboard";
+          return NextResponse.redirect(url);
+        }
+      } else {
+        // Service key not configured — fail safe: block access
+        console.error("[proxy] SUPABASE_SERVICE_ROLE_KEY missing; blocking /admin access");
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        return NextResponse.redirect(url);
+      }
     }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Redirect authenticated users away from login/register
     if (
@@ -95,3 +123,4 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
+

@@ -11,16 +11,16 @@ import Link from "next/link";
 const PERSONAL_PLANS = [
   {
     id: "free",
-    name: "Starter",
+    name: "Free Plan",
     price: "₹0",
-    period: "forever free",
+    period: "1 year validity",
     badge: null,
-    desc: "Perfect for trying out Revela at your first event.",
+    desc: "Perfect for trying out Spotme.",
     features: [
-      "1 Active Event",
-      "10 GB Cloud Storage",
+      "1 Event Creation",
+      "5 GB Cloud Storage",
+      "1 Year Validity",
       "AI Face Matching",
-      "Dynamic QR Event Access",
       "Public Event Gallery",
       "Guest Selfie Upload",
     ],
@@ -29,22 +29,40 @@ const PERSONAL_PLANS = [
     highlight: false,
   },
   {
+    id: "starter",
+    name: "Starter",
+    price: "₹499",
+    period: "/month",
+    badge: null,
+    desc: "For beginners starting their photography journey.",
+    features: [
+      "1 Event Creation",
+      "20 GB Cloud Storage",
+      "1 Year Validity",
+      "AI Face Matching",
+      "Public Event Gallery",
+      "Guest Selfie Upload",
+    ],
+    cta: "Get Started",
+    href: "/login?plan=starter",
+    highlight: false,
+  },
+  {
     id: "pro",
     name: "Personal Pro",
     price: "₹999",
     period: "/month",
     badge: "Most Popular",
-    desc: "For full-time freelance photographers handling multiple events.",
+    desc: "For full-time freelance photographers.",
     features: [
-      "Up to 10 Active Events",
-      "100 GB Cloud Storage",
+      "4 Events Creation",
+      "60 GB Reusable Storage",
+      "Spotme Team Collaboration (3 people)",
       "AI Face Matching",
       "Privacy Mode (selfie-only access)",
       "High-Resolution Downloads",
       "Priority AI Processing",
       "Custom Event Branding",
-      "Guest WhatsApp Alerts",
-      "7-Day Photo Archive",
     ],
     cta: "Get Personal Pro",
     href: "/login?plan=pro",
@@ -54,43 +72,59 @@ const PERSONAL_PLANS = [
 
 const STUDIO_PLANS = [
   {
-    id: "unlimited",
-    name: "Studio",
-    price: "₹2,499",
+    id: "studio_basic",
+    name: "Studio Basic",
+    price: "₹699",
+    period: "/month",
+    badge: null,
+    desc: "For small studios getting started.",
+    features: [
+      "5 Events Creation",
+      "40 GB Cloud Storage",
+      "Face Recognition",
+      "AI Face Matching",
+      "Privacy Mode (selfie-only access)",
+      "High-Resolution Downloads",
+    ],
+    cta: "Get Studio Basic",
+    href: "/login?plan=studio_basic",
+    highlight: false,
+  },
+  {
+    id: "studio_pro",
+    name: "Studio Pro",
+    price: "₹1,599",
     period: "/month",
     badge: "Best Value",
-    desc: "For growing photography studios managing high-volume events.",
+    desc: "For expanding studios with teams.",
     features: [
-      "Unlimited Active Events",
-      "500 GB Cloud Storage",
-      "AI Face Matching",
-      "Privacy & Watermark Controls",
-      "High-Resolution Downloads",
-      "Branded Guest Galleries",
+      "Unlimited Events Creation",
+      "100 GB Cloud Storage",
+      "Face Recognition",
+      "Spotme Access (5 members)",
+      "Custom Event Branding",
       "Priority AI + Support",
-      "Guest WhatsApp Alerts",
-      "Multi-Photographer Workflows",
+      "Branded Guest Galleries",
     ],
-    cta: "Start Studio Plan",
-    href: "/login?plan=unlimited",
+    cta: "Start Studio Pro",
+    href: "/login?plan=studio_pro",
     highlight: true,
   },
   {
-    id: "enterprise",
-    name: "Enterprise",
+    id: "custom",
+    name: "Custom Plan",
     price: "Custom",
     period: "",
     badge: null,
-    desc: "For large agencies and event management companies at scale.",
+    desc: "Tailored plan for large studios and enterprise teams.",
     features: [
-      "Everything in Studio",
-      "Dedicated Storage Quota",
-      "SLA & Uptime Guarantee",
-      "Custom Domain Galleries",
+      "Face Recognition",
+      "Custom Domain",
+      "Custom Branding",
+      "Access to all features",
       "API Access",
       "Dedicated Account Manager",
       "White-Label Options",
-      "Custom AI Thresholds",
       "Invoice Billing",
     ],
     cta: "Contact Sales",
@@ -103,7 +137,7 @@ const FAQS = [
   {
     question: "How does AI photo matching work?",
     answer:
-      "Guests scan the event QR code, upload a selfie, and Revela's AI (InsightFace ArcFace) automatically finds all event photos featuring their face — with no manual tagging needed.",
+      "Guests scan the event QR code, upload a selfie, and Spotme's AI (InsightFace ArcFace) automatically finds all event photos featuring their face — with no manual tagging needed.",
   },
   {
     question: "What is Privacy Mode?",
@@ -135,18 +169,18 @@ const FAQS = [
 // ── Comparison table ──────────────────────────────────────────────────────────
 
 const COMPARISON = [
-  { feature: "Active Events", starter: "1", pro: "10", studio: "Unlimited", enterprise: "Unlimited" },
-  { feature: "Cloud Storage", starter: "10 GB", pro: "100 GB", studio: "500 GB", enterprise: "Custom" },
+  { feature: "Active Events", starter: "1", pro: "4", studio: "Unlimited", enterprise: "Unlimited" },
+  { feature: "Cloud Storage", starter: "20 GB", pro: "60 GB (Reusable)", studio: "100 GB", enterprise: "Custom" },
   { feature: "AI Face Matching", starter: true, pro: true, studio: true, enterprise: true },
   { feature: "Guest QR Access", starter: true, pro: true, studio: true, enterprise: true },
   { feature: "Privacy Mode", starter: false, pro: true, studio: true, enterprise: true },
   { feature: "Custom Branding", starter: false, pro: true, studio: true, enterprise: true },
   { feature: "Priority AI Processing", starter: false, pro: true, studio: true, enterprise: true },
-  { feature: "WhatsApp Guest Alerts", starter: false, pro: true, studio: true, enterprise: true },
+  { feature: "Team Collaboration", starter: false, pro: "3 Members", studio: "5 Members", enterprise: "Custom" },
   { feature: "Branded Galleries", starter: false, pro: false, studio: true, enterprise: true },
   { feature: "API Access", starter: false, pro: false, studio: false, enterprise: true },
   { feature: "White-Label", starter: false, pro: false, studio: false, enterprise: true },
-  { feature: "Support", starter: "Community", pro: "Email", studio: "Priority", enterprise: "Dedicated" },
+  { feature: "Support", starter: "Email", pro: "Priority", studio: "Priority", enterprise: "Dedicated" },
 ];
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -372,8 +406,8 @@ export default function Pricing() {
                     <th className="px-5 py-4 text-left font-semibold text-on-surface w-[40%]">Feature</th>
                     <th className="px-4 py-4 text-center font-semibold text-on-surface-variant">Starter</th>
                     <th className="px-4 py-4 text-center font-bold text-primary">Personal Pro</th>
-                    <th className="px-4 py-4 text-center font-semibold text-on-surface">Studio</th>
-                    <th className="px-4 py-4 text-center font-semibold text-on-surface-variant">Enterprise</th>
+                    <th className="px-4 py-4 text-center font-semibold text-on-surface">Studio Pro</th>
+                    <th className="px-4 py-4 text-center font-semibold text-on-surface-variant">Custom Plan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/8">
@@ -469,7 +503,7 @@ export default function Pricing() {
               Ready to transform your events?
             </h2>
             <p className="text-on-primary/80 mb-8 text-sm md:text-base">
-              Join photographers across India using Revela to deliver stunning AI-powered galleries.
+              Join photographers across India using Spotme to deliver stunning AI-powered galleries.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Link

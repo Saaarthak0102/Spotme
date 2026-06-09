@@ -30,7 +30,7 @@ interface RecentFile {
 
 interface PhotographerStatsPayload {
   profile: {
-    plan: "free" | "pro" | "unlimited";
+    plan: "free" | "starter" | "pro" | "studio_basic" | "studio_pro" | "custom";
     max_storage_gb: number;
   };
   stats: {
@@ -74,9 +74,13 @@ export default function StoragePage() {
   };
 
   const getPlanLabel = (plan: string) => {
-    if (plan === "free") return "Starter Plan";
-    if (plan === "pro") return "Pro Plan";
-    return "Unlimited Plan";
+    if (plan === "free") return "Free Plan";
+    if (plan === "starter") return "Starter Plan";
+    if (plan === "pro") return "Personal Pro Plan";
+    if (plan === "studio_basic") return "Studio Basic Plan";
+    if (plan === "studio_pro") return "Studio Pro Plan";
+    if (plan === "custom") return "Custom Plan";
+    return "Spotme Plan";
   };
 
   if (loading) {
@@ -332,7 +336,7 @@ export default function StoragePage() {
                 </p>
               </div>
             </div>
-            {profile.plan !== "unlimited" && (
+            {profile.plan !== "custom" && profile.plan !== "studio_pro" && (
               <Link
                 href="/dashboard/account"
                 className="shrink-0 text-center rounded-xl bg-[#D67D5C] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_22px_rgba(214,125,92,0.22)] transition hover:-translate-y-0.5 hover:bg-[#C76F50]"

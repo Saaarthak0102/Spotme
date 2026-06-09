@@ -8,30 +8,69 @@ import type { Guest, EventPhoto } from "@/types/database";
 export type { Guest, EventPhoto };
 
 /**
- * Register (or re-find) a guest by phone number for an event.
+ * Register (or re-find) a guest by phone number for an event, verifying their OTP code.
  */
 export async function registerGuest(
   eventId: string,
   phone: string,
-  displayName: string
+  displayName: string,
+  code: string,
+  sessionId: string
 ): Promise<Guest | null> {
   try {
     const res = await fetch(`/api/guest/${eventId}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, displayName }),
+      body: JSON.stringify({ phone, displayName, code, sessionId }),
     });
 
     if (!res.ok) {
-      console.error("registerGuest server error:", res.statusText);
-      return null;
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || `Registration failed with status ${res.status}`);
     }
 
     return await res.json();
   } catch (error) {
     console.error("registerGuest fetch error:", error);
-    return null;
+    throw error;
   }
+}
+
+/**
+ * Request an OTP code to be sent to a guest's phone number.
+ */
+export async function sendOtpCode(phone: string): Promise<{ success: boolean; sessionId?: string; error?: string; method?: "2factor" | "mock" }> {
+  try {
+    const res = await fetch("/api/guest/otp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: data?.error || "Failed to send verification code" };
+    }
+
+    return { success: true, sessionId: data.sessionId, method: data.method };
+  } catch (error) {
+    console.error("sendOtpCode fetch error:", error);
+    return { success: false, error: "Network error sending code. Please try again." };
+  }
+}
+
+/**
+ * Fetch detailed event status/information (type, privacy mode) for guests.
+ */
+export async function getEventDetails(eventId: string): Promise<{ privacy_mode: boolean; event_type: string } | null> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from("events")
+    .select("privacy_mode, event_type")
+    .eq("id", eventId)
+    .single();
+  return data as { privacy_mode: boolean; event_type: string } | null;
 }
 
 /**

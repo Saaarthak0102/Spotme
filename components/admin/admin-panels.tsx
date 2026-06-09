@@ -12,6 +12,7 @@ const nav = [
   { label: "Photographers", href: "/admin/photographers", icon: "photo_camera" },
   { label: "Events", href: "/admin/events", icon: "photo_library" },
   { label: "Inquiries", href: "/admin/inquiries", icon: "mail" },
+  { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
 /* ── Reusable warm stat card ── */
@@ -66,7 +67,7 @@ function AdminSidebar({ active, isOpen, onClose }: { active: string; isOpen?: bo
             <span className="material-symbols-outlined text-[16px]">shield</span>
           </span>
           <div>
-            <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Revela Admin</span>
+            <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Spotme Admin</span>
             <p className="text-[10px] text-[#827970] font-medium leading-none mt-0.5">Super Admin</p>
           </div>
         </div>
@@ -292,7 +293,13 @@ export function AdminOverview() {
     corporate: "#A78BFA", other: "#E06C8E",
   };
   const planColors: Record<string, string> = {
-    free: "#827970", pro: "#D67D5C", unlimited: "#60D9A0",
+    free: "#827970",
+    starter: "#F59E0B",
+    pro: "#D67D5C",
+    studio_basic: "#5B8DEF",
+    studio_pro: "#60D9A0",
+    custom: "#A78BFA",
+    unlimited: "#60D9A0", // legacy
   };
   const statusColors: Record<string, string> = {
     draft: "#827970", active: "#60D9A0", archived: "#A78BFA",
@@ -422,11 +429,21 @@ export function AdminOverview() {
                       <h2 className="text-sm font-bold text-[#2D2D2D] mb-4">Subscription Plans</h2>
                       <DonutChart
                         title="Users"
-                        data={chartData.planDistribution.map((d) => ({
-                          label: d.plan === "free" ? "Starter" : d.plan === "pro" ? "Pro" : "Unlimited",
-                          value: d.count,
-                          color: planColors[d.plan] ?? "#827970",
-                        }))}
+                        data={chartData.planDistribution.map((d) => {
+                          const planLabels: Record<string, string> = {
+                            free: "Free",
+                            starter: "Starter",
+                            pro: "Pro",
+                            studio_basic: "Studio Basic",
+                            studio_pro: "Studio Pro",
+                            custom: "Custom",
+                          };
+                          return {
+                            label: planLabels[d.plan] ?? d.plan,
+                            value: d.count,
+                            color: planColors[d.plan] ?? "#827970",
+                          };
+                        })}
                         size={160}
                       />
                     </div>
@@ -574,6 +591,7 @@ function PhotographerModal({
     phone: initial?.phone ?? "",
     bio: initial?.bio ?? "",
     plan: initial?.plan ?? "free",
+    disabled_features: initial?.disabled_features ?? [],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -593,7 +611,8 @@ function PhotographerModal({
           full_name: form.full_name,
           phone: form.phone,
           bio: form.bio,
-          plan: form.plan
+          plan: form.plan,
+          disabled_features: form.disabled_features
         }),
       });
       const data = await res.json();
@@ -683,12 +702,15 @@ function PhotographerModal({
             <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Subscription Plan</label>
             <select
               value={form.plan}
-              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value as "free" | "pro" | "unlimited" }))}
+              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value as any }))}
               className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] bg-white"
             >
-              <option value="free">Starter (Free - 1 Event, 10GB)</option>
-              <option value="pro">Pro (₹1,699/mo - 5 Events, 100GB)</option>
-              <option value="unlimited">Unlimited (₹4,199/mo - Unlimited, 1TB)</option>
+              <option value="free">Free Plan (₹0 - 1 Event, 5GB)</option>
+              <option value="starter">Starter (₹499/mo - 1 Event, 20GB)</option>
+              <option value="pro">Personal Pro (₹999/mo - 4 Events, 60GB)</option>
+              <option value="studio_basic">Studio Basic (₹699/mo - 5 Events, 40GB)</option>
+              <option value="studio_pro">Studio Pro (₹1,599/mo - Unlimited, 100GB)</option>
+              <option value="custom">Custom Plan (Contact Sales to set up)</option>
             </select>
           </div>
 
@@ -702,6 +724,36 @@ function PhotographerModal({
               className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] resize-none"
               placeholder="Short bio or specialization..."
             />
+          </div>
+
+          <div className="border-t border-[#EFE6DD] pt-4 mt-2">
+            <label className="text-xs font-bold text-[#827970] uppercase tracking-wider block mb-2.5">Enabled Features</label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: "face_matching", label: "AI Face Matching" },
+                { id: "privacy_mode", label: "Privacy Mode" },
+                { id: "collaborators", label: "Collaborators" },
+                { id: "custom_branding", label: "Custom Branding" },
+              ].map((feat) => {
+                const isEnabled = !form.disabled_features.includes(feat.id);
+                return (
+                  <label key={feat.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-stone-50 border border-[#EFE6DD] hover:bg-stone-100/50 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      onChange={(e) => {
+                        const nextDisabled = e.target.checked
+                          ? form.disabled_features.filter((x) => x !== feat.id)
+                          : [...form.disabled_features, feat.id];
+                        setForm((f) => ({ ...f, disabled_features: nextDisabled }));
+                      }}
+                      className="accent-[#D67D5C] h-4.5 w-4.5 rounded"
+                    />
+                    <span className="text-xs font-semibold text-[#2D2D2D]">{feat.label}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-600 font-semibold">{error}</p>}
@@ -838,13 +890,27 @@ export function AdminPhotographers() {
                       <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.photoCount}</td>
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          p.plan === "unlimited"
+                          p.plan === "studio_pro" || (p.plan as string) === "unlimited"
                             ? "bg-green-50 text-green-700 border border-green-200"
                             : p.plan === "pro"
                             ? "bg-[#D67D5C]/10 text-[#94492c] border border-[#D67D5C]/20"
+                            : p.plan === "studio_basic"
+                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                            : p.plan === "starter"
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : p.plan === "custom"
+                            ? "bg-purple-50 text-purple-700 border border-purple-200"
                             : "bg-stone-100 text-stone-600 border border-stone-200"
                         }`}>
-                          {p.plan === "free" ? "Starter" : p.plan === "pro" ? "Pro" : "Unlimited"}
+                          {
+                            p.plan === "free" ? "Free Plan" :
+                            p.plan === "starter" ? "Starter" :
+                            p.plan === "pro" ? "Personal Pro" :
+                            p.plan === "studio_basic" ? "Studio Basic" :
+                            p.plan === "studio_pro" ? "Studio Pro" :
+                            p.plan === "custom" ? "Custom Plan" :
+                            p.plan === "unlimited" ? "Unlimited Plan" : p.plan
+                          }
                         </span>
                       </td>
                       <td className="px-5 py-4 text-[#827970] text-xs">
@@ -903,6 +969,7 @@ export function AdminEvents() {
   const [events, setEvents] = useState<AdminEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
+  const [selectedEvent, setSelectedEvent] = useState<AdminEventRow | null>(null);
 
   // Date Filtering state
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
@@ -1151,19 +1218,24 @@ export function AdminEvents() {
                         <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Date</th>
                         <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
                         <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
+                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Identified</th>
                         <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#EFE6DD]">
                       {filteredEvents.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="px-5 py-12 text-center text-[#827970] text-sm font-semibold">
+                          <td colSpan={7} className="px-5 py-12 text-center text-[#827970] text-sm font-semibold">
                             No events found for this selection.
                           </td>
                         </tr>
                       )}
                       {filteredEvents.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-stone-50/50 transition">
+                        <tr 
+                          key={ev.id} 
+                          onClick={() => setSelectedEvent(ev)} 
+                          className="hover:bg-stone-50/50 transition cursor-pointer"
+                        >
                           <td className="px-5 py-4">
                             <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
                             <p className="text-xs text-[#827970] capitalize font-medium">{ev.event_type} {ev.venue ? `· ${ev.venue}` : ""}</p>
@@ -1179,6 +1251,10 @@ export function AdminEvents() {
                           </td>
                           <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
                           <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
+                          <td className="px-5 py-4 text-right">
+                            <span className="font-bold text-[#2D2D2D]">{ev.identifiedCount}</span>
+                            <span className="text-xs text-[#827970]"> / {ev.guestCount}</span>
+                          </td>
                           <td className="px-5 py-4">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                               ev.status === "active"
@@ -1201,6 +1277,203 @@ export function AdminEvents() {
           )}
         </div>
       </main>
+      <EventStatsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+    </div>
+  );
+}
+
+/* ── Event Statistics Modal ────────────────────────── */
+interface EventStatsModalProps {
+  event: AdminEventRow | null;
+  onClose: () => void;
+}
+
+function EventStatsModal({ event, onClose }: EventStatsModalProps) {
+  if (!event) return null;
+
+  const matchRate = event.guestCount > 0 
+    ? ((event.identifiedCount / event.guestCount) * 100).toFixed(1) 
+    : "0.0";
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const processPercentage = event.photoCount > 0 
+    ? ((event.indexedPhotoCount / event.photoCount) * 100).toFixed(1) 
+    : "100.0";
+
+  const formatDuration = (seconds: number) => {
+    if (seconds === 0) return "0s";
+    if (seconds < 60) return `${seconds.toFixed(1)}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs.toFixed(0)}s`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-stone-900/40 backdrop-blur-md transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal Card */}
+      <div className="relative w-full max-w-2xl transform overflow-hidden rounded-[28px] border border-[#EFE6DD] bg-white/95 p-6 shadow-2xl backdrop-blur-xl transition-all sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-[#EFE6DD] pb-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                event.status === "active" ? "bg-[#60D9A0]/15 text-[#2E7D32]" : "bg-stone-100 text-stone-600"
+              }`}>
+                {event.status}
+              </span>
+              <span className="text-xs text-[#827970] capitalize font-medium">{event.event_type}</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight text-[#2D2D2D] mt-1.5">{event.name}</h3>
+            <p className="text-xs text-[#827970] mt-0.5">
+              Venue: <span className="font-semibold text-stone-700">{event.venue || "—"}</span> · 
+              Date: <span className="font-semibold text-stone-700">{event.event_date ? new Date(event.event_date).toLocaleDateString("en-IN") : "—"}</span>
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EFE6DD] bg-white text-[#827970] hover:text-[#2D2D2D] transition shadow-sm"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        {/* Bento Grid Stats */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          
+          {/* Card 1: Guests & Matching */}
+          <div className="rounded-2xl border border-[#EFE6DD] bg-gradient-to-br from-white to-[#FAF6F4] p-5">
+            <div className="flex items-center justify-between text-[#827970] mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider">Guests & Face Matching</h4>
+              <span className="material-symbols-outlined text-[#D67D5C]">groups</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Total Registered:</span>
+                <span className="font-bold text-[#2D2D2D]">{event.guestCount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Selfies Uploaded:</span>
+                <span className="font-bold text-[#2D2D2D]">{event.selfieCount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Unique Identified:</span>
+                <span className="font-bold text-[#D67D5C]">{event.identifiedCount}</span>
+              </div>
+              <div className="pt-2 border-t border-[#EFE6DD]/80 flex justify-between items-center">
+                <span className="text-xs font-semibold text-[#827970]">Match Rate:</span>
+                <span className="text-sm font-extrabold text-[#94492c]">{matchRate}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Photos & Face Extraction */}
+          <div className="rounded-2xl border border-[#EFE6DD] bg-gradient-to-br from-white to-[#FAF6F4] p-5">
+            <div className="flex items-center justify-between text-[#827970] mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider">Photos & Detection</h4>
+              <span className="material-symbols-outlined text-[#D67D5C]">photo_library</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Total Uploaded:</span>
+                <span className="font-bold text-[#2D2D2D]">{event.photoCount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Photos Indexed:</span>
+                <span className="font-bold text-[#2D2D2D]">{event.indexedPhotoCount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Faces Detected:</span>
+                <span className="font-bold text-[#D67D5C]">{event.totalFaces}</span>
+              </div>
+              <div className="pt-2 border-t border-[#EFE6DD]/80 flex justify-between items-center">
+                <span className="text-xs font-semibold text-[#827970]">Indexing Progress:</span>
+                <span className="text-sm font-extrabold text-[#94492c]">{processPercentage}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Storage Size */}
+          <div className="rounded-2xl border border-[#EFE6DD] bg-gradient-to-br from-white to-[#FAF6F4] p-5">
+            <div className="flex items-center justify-between text-[#827970] mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider">Storage Capacity</h4>
+              <span className="material-symbols-outlined text-[#D67D5C]">cloud_queue</span>
+            </div>
+            <div className="space-y-2 mt-2">
+              <p className="text-2xl font-bold tracking-tight text-[#2D2D2D]">
+                {formatBytes(event.totalStorageBytes)}
+              </p>
+              <p className="text-xs text-[#827970] leading-relaxed">
+                Utilized by original high-resolution uploads and optimized CDN thumbnails and previews.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: AI Compute & Processing Power */}
+          <div className="rounded-2xl border border-[#EFE6DD] bg-gradient-to-br from-white to-[#FAF6F4] p-5">
+            <div className="flex items-center justify-between text-[#827970] mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider">AI Compute Performance</h4>
+              <span className="material-symbols-outlined text-[#D67D5C]">memory</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Processed:</span>
+                <span className="font-bold text-[#2D2D2D]">
+                  {event.indexedPhotoCount} photos · {event.totalFaces} {event.totalFaces === 1 ? "face" : "faces"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Total Processing Time:</span>
+                <span className="font-bold text-[#2D2D2D]">{formatDuration(event.totalProcessingTime)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#625D58]">Avg Time / Photo:</span>
+                <span className="font-bold text-[#2D2D2D]">
+                  {event.indexedPhotoCount > 0 
+                    ? `${(event.totalProcessingTime / event.indexedPhotoCount).toFixed(2)}s` 
+                    : "0.00s"}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-[#EFE6DD]/80 flex justify-between items-center text-xs">
+                <span className="font-semibold text-[#827970]">Active AI Model:</span>
+                <span className="font-bold text-stone-700">SCRFD + ArcFace</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer / Photographer Details */}
+        <div className="mt-6 border-t border-[#EFE6DD] pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#827970]">Managed By</p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-stone-400 text-[18px]">person</span>
+              <p className="text-sm font-semibold text-[#2D2D2D]">{event.ownerName || "—"} <span className="font-normal text-xs text-[#827970]">({event.ownerEmail || ""})</span></p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[#DED5CC] bg-white px-5 py-2.5 text-xs font-semibold text-[#625D58] hover:bg-[#FDF8F1] transition shadow-xs self-end sm:self-auto"
+          >
+            Close Statistics
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }
@@ -1521,6 +1794,135 @@ export function AdminInquiries() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   GLOBAL SETTINGS PAGE
+   ═══════════════════════════════════════════════ */
+export function AdminSettings() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [disabledFeatures, setDisabledFeatures] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.disabled_features) {
+          setDisabledFeatures(data.disabled_features);
+        }
+      })
+      .catch((err) => console.error("Error loading settings:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disabled_features: disabledFeatures }),
+      });
+      if (res.ok) {
+        setMessage("Global system settings saved successfully!");
+      } else {
+        const d = await res.json();
+        setMessage("Error: " + (d.error ?? "Failed to save"));
+      }
+    } catch (err) {
+      setMessage("Error saving settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleFeature = (featId: string, enabled: boolean) => {
+    setDisabledFeatures((prev) =>
+      enabled ? prev.filter((x) => x !== featId) : [...prev.filter((x) => x !== featId), featId]
+    );
+  };
+
+  return (
+    <div className="flex min-h-screen bg-[#FCF9F8]">
+      <AdminSidebar active="Settings" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="flex-1 min-w-0 lg:pl-60">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-2xl animate-page-enter">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6 lg:mb-8 border-b border-[#EFE6DD] pb-5">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+              <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">System Settings</h1>
+              <p className="mt-1 text-xs sm:text-sm text-[#827970]">Configure system-wide parameters and global feature gates.</p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center gap-3 text-[#827970] py-6">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-[#D67D5C]" />
+              Loading settings...
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Global Feature Toggles Card */}
+              <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                <h2 className="text-sm font-bold text-[#2D2D2D] mb-1">Global Feature Toggles</h2>
+                <p className="text-xs text-[#827970] mb-5">Disable features globally for all photographers, regardless of their plan tier.</p>
+
+                <div className="space-y-4">
+                  {[
+                    { id: "face_matching", name: "AI Face Matching", desc: "Allows guests to upload a selfie and search for matching photos using ArcFace embeddings." },
+                    { id: "privacy_mode", name: "Privacy Mode (Selfie-Only)", desc: "Enables event organizers to hide general galleries and enforce guest-specific face matching access." },
+                    { id: "collaborators", name: "Event Collaborators", desc: "Enables inviting team members or other photographers to manage specific event folders." },
+                    { id: "custom_branding", name: "Custom Event Branding", desc: "Allows uploading custom logos and applying branded assets to event gallery page designs." },
+                  ].map((feat) => {
+                    const isEnabled = !disabledFeatures.includes(feat.id);
+                    return (
+                      <div key={feat.id} className="flex items-start justify-between gap-4 p-4 rounded-xl bg-stone-50/50 border border-stone-100 hover:bg-stone-50 transition">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-[#2D2D2D]">{feat.name}</p>
+                          <p className="text-xs text-[#827970] mt-0.5 leading-relaxed">{feat.desc}</p>
+                        </div>
+                        <button
+                          onClick={() => toggleFeature(feat.id, !isEnabled)}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isEnabled ? "bg-[#D67D5C]" : "bg-stone-200"}`}
+                        >
+                          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {message && (
+                <div className={`rounded-xl border px-4 py-3 text-xs font-semibold ${message.startsWith("Error") ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"}`}>
+                  {message}
+                </div>
+              )}
+
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-5 py-3 text-sm font-semibold text-white shadow-lg hover:opacity-90 transition disabled:opacity-50"
+              >
+                {saving ? "Saving Settings…" : "Save Global Settings"}
+              </button>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
