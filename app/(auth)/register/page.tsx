@@ -15,13 +15,16 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ fullName?: string; email?: string; password?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    password?: string;
+    general?: string;
+  }>({});
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
     setFieldErrors({});
 
     // ── Client-side validation ──────────────────────────────────────────────
@@ -51,7 +54,17 @@ export default function Register() {
       });
 
       if (authError) {
-        setError(getAuthErrorMessage(authError.message));
+        const msg = authError.message?.toLowerCase() ?? "";
+
+        if (msg.includes("invalid email") || msg.includes("unable to validate email")) {
+          setFieldErrors((prev) => ({ ...prev, email: "Please enter a valid email address." }));
+        } else if (msg.includes("already registered") || msg.includes("user already exists")) {
+          setFieldErrors((prev) => ({ ...prev, email: "An account with this email already exists." }));
+        } else if (msg.includes("password")) {
+          setFieldErrors((prev) => ({ ...prev, password: "Password does not meet requirements." }));
+        } else {
+          setFieldErrors((prev) => ({ ...prev, general: "Something went wrong. Please try again." }));
+        }
         setIsSubmitting(false);
         return;
       }
@@ -62,9 +75,7 @@ export default function Register() {
       // We detect this and show a helpful message rather than falsely claiming
       // the verification email was sent.
       if (data.user && data.user.identities?.length === 0) {
-        setError(
-          "An account with this email already exists. Please sign in or reset your password if you've forgotten it."
-        );
+        setFieldErrors((prev) => ({ ...prev, email: "An account with this email already exists." }));
         setIsSubmitting(false);
         return;
       }
@@ -73,8 +84,18 @@ export default function Register() {
       setSuccess(true);
       setIsSubmitting(false);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : undefined;
-      setError(getAuthErrorMessage(message, "Something went wrong during registration. Please try again."));
+      const message = err instanceof Error ? err.message : "";
+      const msg = message.toLowerCase();
+
+      if (msg.includes("invalid email") || msg.includes("unable to validate email")) {
+        setFieldErrors((prev) => ({ ...prev, email: "Please enter a valid email address." }));
+      } else if (msg.includes("already registered") || msg.includes("user already exists")) {
+        setFieldErrors((prev) => ({ ...prev, email: "An account with this email already exists." }));
+      } else if (msg.includes("password")) {
+        setFieldErrors((prev) => ({ ...prev, password: "Password does not meet requirements." }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, general: "Something went wrong. Please try again." }));
+      }
       setIsSubmitting(false);
     }
   };
@@ -113,10 +134,10 @@ export default function Register() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              {error && (
+              {fieldErrors.general && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 animate-fade-in flex gap-2 items-start">
                   <span className="material-symbols-outlined text-red-500 text-[18px] shrink-0 mt-0.5">warning</span>
-                  <span>{error}</span>
+                  <span>{fieldErrors.general}</span>
                 </div>
               )}
 
@@ -149,7 +170,10 @@ export default function Register() {
                   required
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, email: "" }));
+                  }}
                   maxLength={320}
                   autoComplete="email"
                   className={`w-full bg-surface-bright border-none ring-1 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${
