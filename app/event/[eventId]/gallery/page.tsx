@@ -25,5 +25,5 @@ export default async function GalleryPage({
   }
 
   const photos = await fetchGuestGallery(eventId);
-  return <GalleryPageClient eventId={eventId} photos={photos} />;
+  return <GalleryPageClient eventId={eventId} eventType={event?.event_type || 'other'} photos={photos} />;
 }

@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { EventPhoto } from "@/types/database";
 import { fetchGuestGalleryClient } from "@/lib/guest-data-client";
 import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
+import { downloadWithWatermark } from "@/lib/watermark-client";
 
 // Fallback blur placeholder
 const FALLBACK_BLUR =
@@ -13,10 +14,12 @@ const FALLBACK_BLUR =
 
 export function GalleryPageClient({
   eventId,
+  eventType,
   photos: initialPhotos,
   initialCursor,
 }: {
   eventId: string;
+  eventType: string;
   photos: EventPhoto[];
   initialCursor?: string | null;
 }) {
@@ -27,6 +30,28 @@ export function GalleryPageClient({
   const [loadingMore, setLoadingMore] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const handleDownload = async (photo: EventPhoto) => {
+    if (!photo.public_url) return;
+    if (eventType === "hackathon") {
+      try {
+        await downloadWithWatermark(photo.public_url, photo.original_filename || "event-photo.jpg");
+      } catch (err) {
+        console.error("Watermark download failed, falling back to original:", err);
+        const link = document.createElement("a");
+        link.href = photo.public_url;
+        link.download = photo.original_filename || "event-photo.jpg";
+        link.target = "_blank";
+        link.click();
+      }
+    } else {
+      const link = document.createElement("a");
+      link.href = photo.public_url;
+      link.download = photo.original_filename || "event-photo.jpg";
+      link.target = "_blank";
+      link.click();
+    }
+  };
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -219,16 +244,15 @@ export function GalleryPageClient({
             <span>
               {lightboxIndex + 1} / {photos.length}
             </span>
-            <a
-              href={photos[lightboxIndex].public_url ?? "#"}
-              download={photos[lightboxIndex].original_filename}
-              className="flex items-center gap-1.5 font-semibold text-white transition hover:text-[#F4A261]"
+            <button
+              onClick={() => handleDownload(photos[lightboxIndex])}
+              className="flex items-center gap-1.5 font-semibold text-white transition hover:text-[#F4A261] bg-transparent border-none outline-none cursor-pointer"
             >
               <span className="material-symbols-outlined text-[18px]">
                 download
               </span>
               Download
-            </a>
+            </button>
           </div>
         </div>
       )}

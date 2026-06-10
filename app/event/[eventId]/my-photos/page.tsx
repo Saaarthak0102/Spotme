@@ -8,8 +8,9 @@ import {
   fetchMyPhotos,
   getGuestSelfieStatus,
   fetchGuestGalleryClient,
-  getEventPrivacyMode,
+  getEventDetails,
 } from "@/lib/guest-data-client";
+import { downloadWithWatermark } from "@/lib/watermark-client";
 import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
 import type { EventPhoto } from "@/types/database";
 
@@ -30,10 +31,33 @@ export default function MyPhotosPage() {
   const [loading, setLoading] = useState(true);
   const [hasGuestRecord, setHasGuestRecord] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [eventType, setEventType] = useState<string>("other");
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [selfieId, setSelfieId] = useState<string | null>(null);
   const [matchStatus, setMatchStatus] = useState<string | null>(null); // 'processing' | 'matched' | 'no_face' | null
   const [aiMatched, setAiMatched] = useState(false);
+
+  const handleDownload = async (photo: EventPhoto) => {
+    if (!photo.public_url) return;
+    if (eventType === "hackathon") {
+      try {
+        await downloadWithWatermark(photo.public_url, photo.original_filename || "event-photo.jpg");
+      } catch (err) {
+        console.error("Watermark download failed, falling back to original:", err);
+        const link = document.createElement("a");
+        link.href = photo.public_url;
+        link.download = photo.original_filename || "event-photo.jpg";
+        link.target = "_blank";
+        link.click();
+      }
+    } else {
+      const link = document.createElement("a");
+      link.href = photo.public_url;
+      link.download = photo.original_filename || "event-photo.jpg";
+      link.target = "_blank";
+      link.click();
+    }
+  };
 
   // Polling ref for processing state
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,9 +77,11 @@ export default function MyPhotosPage() {
       setLoading(true);
       const storedGuestId = localStorage.getItem(`guest_id_${eventId}`);
 
-      // Check privacy mode first — affects all fallback behaviour
-      const isPrivate = await getEventPrivacyMode(eventId);
+      // Check event details first — privacy mode and event type
+      const eventDetails = await getEventDetails(eventId);
+      const isPrivate = eventDetails?.privacy_mode === true;
       setPrivacyMode(isPrivate);
+      setEventType(eventDetails?.event_type || "other");
 
       if (!storedGuestId) {
         setHasGuestRecord(false);
@@ -310,14 +336,10 @@ export default function MyPhotosPage() {
           {aiMatched && photos.length > 0 && (
             <button
               onClick={() => {
-                photos.forEach((photo) => {
-                  if (photo.public_url) {
-                    const link = document.createElement("a");
-                    link.href = photo.public_url;
-                    link.download = photo.original_filename || "event-photo.jpg";
-                    link.target = "_blank";
-                    link.click();
-                  }
+                photos.forEach((photo, index) => {
+                  setTimeout(() => {
+                    handleDownload(photo);
+                  }, index * 200);
                 });
               }}
               className="flex h-11 items-center gap-2 rounded-2xl bg-[#2D2D2D] hover:bg-[#1E1E1E] px-6 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(45,45,45,0.15)] transition hover:-translate-y-0.5 active:scale-[0.98]"
@@ -475,16 +497,13 @@ export default function MyPhotosPage() {
               {lightboxIndex + 1} of {photos.length}
             </span>
             <div className="w-[1px] h-3 bg-white/20" />
-            <a
-              href={photos[lightboxIndex].public_url ?? "#"}
-              download={photos[lightboxIndex].original_filename || "event-photo.jpg"}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs font-bold text-white transition hover:text-[#F4A261]"
+            <button
+              onClick={() => handleDownload(photos[lightboxIndex])}
+              className="flex items-center gap-1.5 text-xs font-bold text-white transition hover:text-[#F4A261] bg-transparent border-none outline-none cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">download</span>
               Download Original
-            </a>
+            </button>
           </div>
         </div>
       )}
