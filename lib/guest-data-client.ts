@@ -14,9 +14,9 @@ export async function registerGuest(
   eventId: string,
   phone: string,
   displayName: string,
-  code: string,
-  sessionId: string
-): Promise<Guest | null> {
+  code?: string,
+  sessionId?: string
+): Promise<any> {
   try {
     const res = await fetch(`/api/guest/${eventId}/register`, {
       method: "POST",

@@ -72,20 +72,55 @@ export default function VerifyPage() {
     setInfoMessage(null);
 
     const fullPhone = `${countryCode}${phone}`;
-    const result = await sendOtpCode(fullPhone);
 
-    if (result.success && result.sessionId) {
-      setSessionId(result.sessionId);
-      setStep("otp_verify");
-      setExpiryTimeLeft(600);
-      setResendCooldown(30);
-      if (result.method === "mock") {
-        setInfoMessage("Development mode: Enter 123456 as the verification code.");
+    try {
+      // 1. Try direct registration. If guest already exists, they login instantly bypassing OTP.
+      const registerRes = await registerGuest(eventId, fullPhone, name.trim(), "", "");
+
+      if (registerRes && registerRes.id) {
+        localStorage.setItem(`guest_id_${eventId}`, registerRes.id);
+        localStorage.setItem(`guest_name_${eventId}`, name.trim());
+
+        setStep("success");
+
+        const details = await getEventDetails(eventId);
+        const isHackathon = details?.event_type === "hackathon";
+        const isPrivate = details?.privacy_mode === true;
+
+        setTimeout(() => {
+          if (isHackathon || isPrivate) {
+            router.push(`/event/${eventId}/find-me`);
+          } else {
+            router.push(`/event/${eventId}/gallery`);
+          }
+        }, 1500);
+        return;
       }
-    } else {
-      setError(result.error || "Failed to send verification code. Please check your number and try again.");
+
+      if (registerRes && registerRes.otpRequired) {
+        // 2. OTP is required for new guests. Send code.
+        const result = await sendOtpCode(fullPhone);
+
+        if (result.success && result.sessionId) {
+          setSessionId(result.sessionId);
+          setStep("otp_verify");
+          setExpiryTimeLeft(600);
+          setResendCooldown(30);
+          if (result.method === "mock") {
+            setInfoMessage("Development mode: Enter 123456 as the verification code.");
+          }
+        } else {
+          setError(result.error || "Failed to send verification code. Please check your number and try again.");
+        }
+      } else {
+        setError("Failed to register. Please try again.");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "An error occurred. Please try again.";
+      setError(msg);
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleResendOtp = async () => {

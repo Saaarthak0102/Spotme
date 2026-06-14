@@ -88,16 +88,7 @@ export async function POST(
       );
     }
 
-    // ── OTP Verification ───────────────────────────────────────────────────
-    if (!code || !sessionId) {
-      return NextResponse.json({ error: "Verification code and session ID are required" }, { status: 400 });
-    }
-    const verifyResult = await verifyOtpCode(sessionId, code);
-    if (!verifyResult.success) {
-      return NextResponse.json({ error: verifyResult.error || "Invalid verification code" }, { status: 400 });
-    }
-
-    // 2. Check if guest already exists for this event + phone
+    // 1. Check if guest already exists for this event + phone
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: existing, error: selectError } = await (adminClient as any)
       .from("guests")
@@ -114,6 +105,16 @@ export async function POST(
     let guestRecord = existing;
 
     if (!guestRecord) {
+      // 2. If guest does not exist, verify OTP first
+      if (!code || !sessionId) {
+        return NextResponse.json({ otpRequired: true }, { status: 200 });
+      }
+
+      const verifyResult = await verifyOtpCode(sessionId, code);
+      if (!verifyResult.success) {
+        return NextResponse.json({ error: verifyResult.error || "Invalid verification code" }, { status: 400 });
+      }
+
       // 3. Register a new guest
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: newGuest, error: insertError } = await (adminClient as any)
