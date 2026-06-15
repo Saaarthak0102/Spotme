@@ -687,3 +687,46 @@ export async function updateGlobalSettings(disabledFeatures: string[]): Promise<
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+export async function restartEventFaceDetection(eventId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = getAdminClient();
+
+  // 1. Delete matches
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: matchesErr } = await (supabase as any)
+    .from("photo_matches")
+    .delete()
+    .eq("event_id", eventId);
+
+  if (matchesErr) {
+    console.error("[admin-data] Failed to clear photo matches:", matchesErr.message);
+    return { success: false, error: matchesErr.message };
+  }
+
+  // 2. Delete face embeddings
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: embeddingsErr } = await (supabase as any)
+    .from("face_embeddings")
+    .delete()
+    .eq("event_id", eventId);
+
+  if (embeddingsErr) {
+    console.error("[admin-data] Failed to clear face embeddings:", embeddingsErr.message);
+    return { success: false, error: embeddingsErr.message };
+  }
+
+  // 3. Reset indexed flag on event photos
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: photosErr } = await (supabase as any)
+    .from("event_photos")
+    .update({ face_indexed: false, face_indexed_at: null, processing_time: 0 })
+    .eq("event_id", eventId);
+
+  if (photosErr) {
+    console.error("[admin-data] Failed to reset event photos:", photosErr.message);
+    return { success: false, error: photosErr.message };
+  }
+
+  return { success: true };
+}
+

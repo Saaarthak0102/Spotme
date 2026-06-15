@@ -979,12 +979,27 @@ export function AdminEvents() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  useEffect(() => {
+  const loadEvents = useCallback(() => {
+    setLoading(true);
     fetch("/api/admin/stats")
       .then((r) => r.json())
-      .then(({ events }) => setEvents(events))
+      .then(({ events: fetchedEvents }) => {
+        setEvents(fetchedEvents || []);
+        // Also update selectedEvent if it's open, so that stats reload live in the modal
+        if (selectedEvent) {
+          const updated = (fetchedEvents || []).find((e: AdminEventRow) => e.id === selectedEvent.id);
+          if (updated) {
+            setSelectedEvent(updated);
+          }
+        }
+      })
       .finally(() => setLoading(false));
+  }, [selectedEvent]);
+
+  useEffect(() => {
+    loadEvents();
   }, []);
+
 
   const getEventDateString = (dateStr: string | null) => {
     if (!dateStr) return "";
@@ -1277,7 +1292,7 @@ export function AdminEvents() {
           )}
         </div>
       </main>
-      <EventStatsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      <EventStatsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRestartSuccess={loadEvents} />
     </div>
   );
 }
@@ -1286,10 +1301,41 @@ export function AdminEvents() {
 interface EventStatsModalProps {
   event: AdminEventRow | null;
   onClose: () => void;
+  onRestartSuccess?: () => void;
 }
 
-function EventStatsModal({ event, onClose }: EventStatsModalProps) {
+function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalProps) {
+  const [restarting, setRestarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
   if (!event) return null;
+
+  const handleRestartDetection = async () => {
+    if (!confirm("Are you sure you want to restart face detection for this event? This will clear all existing matches and face embeddings, and queue all event photos for re-indexing.")) {
+      return;
+    }
+    setRestarting(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch(`/api/admin/events/${event.id}/restart-detection`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to restart face detection.");
+      }
+      setSuccessMsg("Face detection restarted successfully! Photos are being queued for re-indexing.");
+      if (onRestartSuccess) {
+        onRestartSuccess();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } finally {
+      setRestarting(false);
+    }
+  };
 
   const matchRate = event.guestCount > 0 
     ? ((event.identifiedCount / event.guestCount) * 100).toFixed(1) 
@@ -1322,6 +1368,7 @@ function EventStatsModal({ event, onClose }: EventStatsModalProps) {
         className="absolute inset-0 bg-stone-900/40 backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
+
 
       {/* Modal Card */}
       <div className="relative w-full max-w-2xl transform overflow-hidden rounded-[28px] border border-[#EFE6DD] bg-white/95 p-6 shadow-2xl backdrop-blur-xl transition-all sm:p-8 animate-in fade-in zoom-in-95 duration-200">
@@ -1456,6 +1503,17 @@ function EventStatsModal({ event, onClose }: EventStatsModalProps) {
 
         </div>
 
+        {error && (
+          <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700 font-semibold animate-fade-in">
+            {error}
+          </div>
+        )}
+        {successMsg && (
+          <div className="mt-4 rounded-xl bg-green-50 border border-green-200 px-4 py-2.5 text-xs text-green-700 font-semibold animate-fade-in">
+            {successMsg}
+          </div>
+        )}
+
         {/* Footer / Photographer Details */}
         <div className="mt-6 border-t border-[#EFE6DD] pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -1465,12 +1523,31 @@ function EventStatsModal({ event, onClose }: EventStatsModalProps) {
               <p className="text-sm font-semibold text-[#2D2D2D]">{event.ownerName || "—"} <span className="font-normal text-xs text-[#827970]">({event.ownerEmail || ""})</span></p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-xl border border-[#DED5CC] bg-white px-5 py-2.5 text-xs font-semibold text-[#625D58] hover:bg-[#FDF8F1] transition shadow-xs self-end sm:self-auto"
-          >
-            Close Statistics
-          </button>
+          <div className="flex gap-2 self-end sm:self-auto">
+            <button
+              onClick={handleRestartDetection}
+              disabled={restarting}
+              className="rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 px-4 py-2.5 text-xs font-semibold text-amber-700 active:scale-[0.98] transition flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {restarting ? (
+                <>
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber-300 border-t-amber-700" />
+                  Restarting...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[15px]">sync</span>
+                  Restart Face Detection
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-[#DED5CC] bg-white px-5 py-2.5 text-xs font-semibold text-[#625D58] hover:bg-[#FDF8F1] transition shadow-xs"
+            >
+              Close Statistics
+            </button>
+          </div>
         </div>
 
       </div>
