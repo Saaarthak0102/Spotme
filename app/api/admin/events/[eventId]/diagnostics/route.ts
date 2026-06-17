@@ -34,14 +34,13 @@ export async function GET(
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // 1. Fetch Event and Owner Info
+    // 1. Fetch Event and Owner Info (exclude email column as it does not exist in profiles table)
     const { data: event, error: eventErr } = await supabaseAdmin
       .from("events")
       .select(`
         *,
         owner:profiles!events_owner_id_fkey (
-          full_name,
-          email
+          full_name
         )
       `)
       .eq("id", eventId)
@@ -49,6 +48,17 @@ export async function GET(
 
     if (eventErr || !event) {
       return NextResponse.json({ error: eventErr?.message || "Event not found" }, { status: 404 });
+    }
+
+    // Resolve owner's email from Auth service using admin client
+    let ownerEmail = null;
+    try {
+      if (event.owner_id) {
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(event.owner_id);
+        ownerEmail = authUser?.user?.email || null;
+      }
+    } catch (authErr) {
+      console.warn("Failed to retrieve owner email from Auth service:", authErr);
     }
 
     // 2. Fetch all photos for this event
@@ -238,7 +248,10 @@ export async function GET(
         event_date: event.event_date,
         event_type: event.event_type,
         status: event.status,
-        owner: event.owner,
+        owner: event.owner ? {
+          ...event.owner,
+          email: ownerEmail
+        } : null,
       },
       stats: {
         photos: {
