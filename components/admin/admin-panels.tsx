@@ -117,8 +117,27 @@ function AdminSidebar({ active, isOpen, onClose }: { active: string; isOpen?: bo
 }
 
 /* ── Live AI Resource Health Estimator Card ── */
+interface AIServerHealth {
+  url: string;
+  status: string;
+  worker_id?: string;
+  model?: string;
+  model_loaded?: boolean;
+  hires_model_loaded?: boolean;
+  ram_total_mb?: number;
+  ram_free_mb?: number;
+  ram_used_pct?: number;
+  max_concurrent?: number;
+  gpu_available?: boolean;
+  active_jobs?: number;
+  max_queue_size?: number;
+  database_connected?: boolean;
+  error?: string;
+}
+
 interface AIHealthData {
   status: string;
+  servers?: AIServerHealth[];
   model?: string;
   model_loaded?: boolean;
   active_jobs?: number;
@@ -172,7 +191,7 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
           ) : isOnline ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700 border border-green-200">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-ping" />
-              Engine Online
+              Engine Online ({health.servers?.filter(s => s.status === 'ok').length || 1} Active)
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 border border-red-200">
@@ -183,53 +202,96 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Side: Real-time System RAM Indicator */}
-        <div className="flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-[18px] text-[#827970]">memory</span>
-              <span className="text-xs font-bold text-[#827970] uppercase tracking-wider">Live System Memory</span>
-            </div>
-            {isOnline && health ? (
-              <div className="space-y-2 mt-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-[#827970]">RAM Utilization</span>
-                  <span className="text-[#2D2D2D] font-bold">{health.ram_used_pct}%</span>
-                </div>
-                <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      (health.ram_used_pct ?? 0) > 85 ? "bg-red-500" : (health.ram_used_pct ?? 0) > 70 ? "bg-amber-500" : "bg-[#60D9A0]"
-                    }`}
-                    style={{ width: `${health.ram_used_pct}%` }}
-                  />
-                </div>
-                <p className="text-[11px] text-[#827970]">
-                  {(health.ram_total_mb && health.ram_free_mb)
-                    ? `${(health.ram_total_mb - health.ram_free_mb).toLocaleString()}MB / ${health.ram_total_mb.toLocaleString()}MB used`
-                    : "Fetching exact dimensions..."}
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-xl bg-stone-50 border border-dashed border-[#EFE6DD] p-4 text-center text-xs text-[#827970] my-2">
-                Memory metrics are currently unavailable since the AI service is offline.
-              </div>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Side: Active Servers & Hardware status */}
+        <div className="lg:col-span-7 flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-[#827970]">dns</span>
+            <span className="text-xs font-bold text-[#827970] uppercase tracking-wider">Active AI Server Nodes</span>
           </div>
 
-          <div className="border-t border-[#EFE6DD] pt-3 mt-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-[#827970] font-medium">Inference semaphore queue</span>
-              <span className="text-[#2D2D2D] font-bold">
-                {isOnline && health ? `${health.active_jobs ?? 0} / ${health.max_queue_size ?? 10} running` : "— / 10"}
-              </span>
-            </div>
+          <div className="space-y-3">
+            {health?.servers && health.servers.length > 0 ? (
+              health.servers.map((server, idx) => {
+                const sOnline = server.status === "ok";
+                const cleanUrl = server.url.replace("http://", "").replace("https://", "");
+                return (
+                  <div key={idx} className="rounded-xl border border-[#EFE6DD] bg-stone-50/50 p-4 transition duration-300 hover:border-[#D67D5C]/35">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200/60 pb-2 mb-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-[#2D2D2D]">{cleanUrl}</span>
+                        {server.gpu_available && (
+                          <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200">
+                            GPU Accelerated
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        {sOnline ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700 border border-green-200">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-200">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            Offline
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {sOnline ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Memory stats */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-medium text-[#827970]">
+                            <span>RAM Usage</span>
+                            <span className="font-bold text-[#2D2D2D]">{server.ram_used_pct}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                (server.ram_used_pct ?? 0) > 85 ? "bg-red-500" : (server.ram_used_pct ?? 0) > 70 ? "bg-amber-500" : "bg-[#60D9A0]"
+                              }`}
+                              style={{ width: `${server.ram_used_pct}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-[#827970]">
+                            {(server.ram_total_mb && server.ram_free_mb)
+                              ? `${(server.ram_total_mb - server.ram_free_mb).toLocaleString()}MB / ${server.ram_total_mb.toLocaleString()}MB used`
+                              : "—"}
+                          </p>
+                        </div>
+
+                        {/* Semaphore & Worker Details */}
+                        <div className="text-[11px] space-y-1 text-[#827970]">
+                          <div className="flex justify-between">
+                            <span>Worker ID:</span>
+                            <span className="font-semibold text-[#2D2D2D] truncate max-w-[140px]">{server.worker_id}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Concurrency:</span>
+                            <span className="font-semibold text-[#2D2D2D]">{server.active_jobs ?? 0} / {server.max_queue_size ?? 10} active</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-red-600 font-semibold">{server.error || "Connection timed out."}</p>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded-xl bg-stone-50 border border-dashed border-[#EFE6DD] p-8 text-center text-xs text-[#827970]">
+                No active AI server instances detected. Please ensure uvicorn core is running.
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right Side: Today's cumulative workloads and CPU time */}
-        <div className="border-t md:border-t-0 md:border-l border-[#EFE6DD] pt-6 md:pt-0 md:pl-6 flex flex-col justify-between">
+        <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-[#EFE6DD] pt-6 lg:pt-0 lg:pl-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="material-symbols-outlined text-[18px] text-[#827970]">analytics</span>
@@ -257,7 +319,7 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
             </div>
           </div>
 
-          <p className="text-[10px] text-[#827970] italic leading-tight mt-4 pt-2 border-t border-[#EFE6DD]/80">
+          <p className="text-[10px] text-[#827970] italic leading-tight mt-6 pt-2 border-t border-[#EFE6DD]/80">
             * Estimates are calculated on 1.5s per photographer photo indexing (SCRFD face detection + embeddings mapping) and 0.8s per guest selfie search match.
           </p>
         </div>
@@ -1524,6 +1586,13 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
             </div>
           </div>
           <div className="flex gap-2 self-end sm:self-auto">
+            <Link
+              href={`/admin/events/${event.id}/diagnostics`}
+              className="rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] hover:opacity-90 px-4 py-2.5 text-xs font-semibold text-white transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[15px]">analytics</span>
+              View Diagnostics
+            </Link>
             <button
               onClick={handleRestartDetection}
               disabled={restarting}
