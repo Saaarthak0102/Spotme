@@ -65,7 +65,7 @@ export async function GET(
     // 3. Fetch all guests for this event
     const { data: guests, error: guestsErr } = await supabaseAdmin
       .from("guests")
-      .select("id, display_name, email, phone, created_at")
+      .select("id, display_name, phone, created_at")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false });
 
@@ -76,7 +76,7 @@ export async function GET(
     // 4. Fetch all guest selfies for this event
     const { data: selfies, error: selfiesErr } = await supabaseAdmin
       .from("guest_selfies")
-      .select("id, guest_id, status, public_url, created_at")
+      .select("id, guest_id, status, public_url")
       .eq("event_id", eventId);
 
     if (selfiesErr) {
@@ -96,7 +96,7 @@ export async function GET(
     // 6. Fetch all photo matches (to count matches per guest)
     const { data: matches, error: matchesErr } = await supabaseAdmin
       .from("photo_matches")
-      .select("id, guest_id")
+      .select("id, guest_id, photo_id, guest_selfie_id, similarity, confidence_tier")
       .eq("event_id", eventId);
 
     if (matchesErr) {
@@ -108,11 +108,11 @@ export async function GET(
     try {
       const { data: rawQueue } = await supabaseAdmin
         .from("processing_queue")
-        .select("id, job_type, status, error_msg, attempts, claimed_at, created_at, completed_at")
+        .select("id, job_type, payload, status, error_msg, attempts, claimed_at, created_at, completed_at")
         .eq("event_id", eventId)
         .order("created_at", { ascending: false });
       queueJobs = rawQueue || [];
-    } catch {
+    } catch (code) {
       // Non-fatal if table doesn't exist
     }
 
@@ -124,19 +124,19 @@ export async function GET(
       }
     });
 
-    // Aggregate matches by guest
-    const matchesByGuest: Record<string, number> = {};
-    matches?.forEach((match) => {
-      if (match.guest_id) {
-        matchesByGuest[match.guest_id] = (matchesByGuest[match.guest_id] || 0) + 1;
-      }
-    });
-
-    // Aggregate selfies by guest
-    const selfieByGuest: Record<string, typeof selfies[number]> = {};
-    selfies?.forEach((selfie) => {
-      if (selfie.guest_id) {
-        selfieByGuest[selfie.guest_id] = selfie;
+    // Aggregate failed queue job errors by selfie_id
+    const selfieErrors: Record<string, string> = {};
+    queueJobs.forEach((job) => {
+      if (job.job_type === "embed_selfie" && job.status === "failed" && job.error_msg) {
+        try {
+          const payload = typeof job.payload === "string" ? JSON.parse(job.payload) : job.payload;
+          const selfieId = payload?.selfie_id;
+          if (selfieId) {
+            selfieErrors[selfieId] = job.error_msg;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
       }
     });
 
@@ -151,7 +151,6 @@ export async function GET(
     // Compute Guests Summary
     const totalGuests = guests.length;
     const guestsWithSelfies = selfies.length;
-    const guestsIdentified = Object.keys(matchesByGuest).length;
 
     // Compute Queue Summary
     const queueSummary = {
@@ -170,23 +169,66 @@ export async function GET(
       face_indexed: p.face_indexed,
       face_indexed_at: p.face_indexed_at,
       processing_time: p.processing_time,
-      uploaded_at: p.uploaded_at,
       faces_count: embeddingsByPhoto[p.id] || 0,
+      uploaded_at: p.uploaded_at,
     }));
 
     const guestDetails = guests.map((g) => {
-      const selfie = selfieByGuest[g.id];
+      const guestSelfies = (selfies || [])
+        .filter((s) => s.guest_id === g.id)
+        .map((s) => {
+          const matchedPhotosForSelfie = (matches || [])
+            .filter((m) => m.guest_selfie_id === s.id)
+            .map((m) => {
+              const photo = photos.find((p) => p.id === m.photo_id);
+              return {
+                photo_id: m.photo_id,
+                public_url: photo?.public_url || "",
+                filename: photo?.original_filename || "Unknown",
+                similarity: m.similarity,
+                confidence_tier: m.confidence_tier,
+              };
+            });
+
+          return {
+            id: s.id,
+            status: s.status,
+            public_url: s.public_url,
+            error: selfieErrors[s.id] || null,
+            matches_count: matchedPhotosForSelfie.length,
+            matched_photos: matchedPhotosForSelfie,
+          };
+        });
+
+      let aggregatedStatus = "none";
+      if (guestSelfies.length > 0) {
+        if (guestSelfies.some((s) => s.status === "matched")) {
+          aggregatedStatus = "matched";
+        } else if (guestSelfies.some((s) => s.status === "processing" || s.status === "uploaded")) {
+          aggregatedStatus = "processing";
+        } else if (guestSelfies.some((s) => s.status === "no_face")) {
+          aggregatedStatus = "no_face";
+        } else {
+          aggregatedStatus = guestSelfies[0].status;
+        }
+      }
+
+      const guestMatchesCount = (matches || []).filter((m) => m.guest_id === g.id).length;
+
       return {
         id: g.id,
         display_name: g.display_name,
-        email: g.email,
         phone: g.phone,
         created_at: g.created_at,
-        selfie_status: selfie?.status || "none",
-        selfie_url: selfie?.public_url || null,
-        matches_count: matchesByGuest[g.id] || 0,
+        selfie_status: aggregatedStatus,
+        selfie_url: guestSelfies[0]?.public_url || null,
+        selfie_error: guestSelfies.find((s) => s.error)?.error || null,
+        selfies: guestSelfies,
+        matches_count: guestMatchesCount,
       };
     });
+
+    const guestsIdentified = guestDetails.filter((g) => g.matches_count > 0).length;
 
     return NextResponse.json({
       event: {
@@ -216,7 +258,7 @@ export async function GET(
       },
       queueJobs: queueJobs.slice(0, 50), // Send last 50 jobs
       photos: photoDetails.slice(0, 100), // Send last 100 photos
-      guests: guestDetails.slice(0, 100), // Send last 100 guests
+      guests: guestDetails, // Send all guests (no slice)
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
