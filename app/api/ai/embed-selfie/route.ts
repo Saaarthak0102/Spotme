@@ -91,5 +91,65 @@ export async function POST(req: NextRequest) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── Failsafe: re-queue stuck selfies ─────────────────────────────────────
+  // The DB trigger (auto_enqueue_selfie in migration 018) should have already
+  // added an embed_selfie job when the selfie was inserted. However, if the
+  // worker crashed before processing, the selfie may be stuck. This ensures
+  // a pending job exists for the guest's latest unprocessed selfie.
+  try {
+    const targetSelfieId = selfie_id ?? null;
+
+    // Look up the guest's latest uploaded/stuck selfie
+    const selfieQuery = adminClient
+      .from("guest_selfies")
+      .select("id, public_url, status")
+      .eq("guest_id", guest_id)
+      .eq("event_id", event_id)
+      .in("status", ["uploaded", "processing"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (targetSelfieId) {
+      selfieQuery.eq("id", targetSelfieId);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: stuckSelfie } = await (selfieQuery as any).maybeSingle();
+
+    if (stuckSelfie) {
+      // Check if there's already a pending/processing job so we don't double-process
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingJobs } = await (adminClient as any)
+        .from("processing_queue")
+        .select("id")
+        .eq("event_id", event_id)
+        .eq("job_type", "embed_selfie")
+        .eq("status", "pending")
+        .limit(1);
+
+      if (!existingJobs?.length) {
+        // No pending job — insert a failsafe one
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (adminClient as any).from("processing_queue").insert({
+          job_type: "embed_selfie",
+          payload: {
+            selfie_id: stuckSelfie.id,
+            guest_id,
+            event_id,
+            public_url: stuckSelfie.public_url,
+          },
+          event_id,
+          priority: 1, // highest priority — guests are served before photo indexing
+        });
+        console.log(`[embed-selfie] Inserted failsafe queue job for selfie ${stuckSelfie.id}`);
+      }
+    }
+  } catch (err) {
+    // Non-fatal — the DB trigger or a previous call may have already queued the job.
+    // The worker will still process it. Don't fail the request.
+    console.warn("[embed-selfie] Could not insert failsafe queue job:", err instanceof Error ? err.message : err);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   return NextResponse.json({ status: "queued" });
 }

@@ -715,18 +715,97 @@ export async function restartEventFaceDetection(eventId: string): Promise<{ succ
     return { success: false, error: embeddingsErr.message };
   }
 
-  // 3. Reset indexed flag on event photos
+  // 3. Reset indexed flag on event photos (legacy polling worker reads face_indexed = false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: photosErr } = await (supabase as any)
+  const { error: photosErr, data: resetPhotos } = await (supabase as any)
     .from("event_photos")
     .update({ face_indexed: false, face_indexed_at: null, processing_time: 0 })
-    .eq("event_id", eventId);
+    .eq("event_id", eventId)
+    .select("id, public_url");
 
   if (photosErr) {
     console.error("[admin-data] Failed to reset event photos:", photosErr.message);
     return { success: false, error: photosErr.message };
   }
 
+  // 4. Also cancel stale processing_queue jobs for this event (avoid conflicts with new ones)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from("processing_queue")
+      .update({ status: "dead", error_msg: "Cancelled by restart face detection" })
+      .eq("event_id", eventId)
+      .in("status", ["pending", "processing"])
+      .eq("job_type", "index_photo");
+  } catch {
+    // Non-fatal if processing_queue table doesn't exist (pre-migration 018)
+  }
+
+  // 5. Insert fresh index_photo jobs into processing_queue for each photo
+  //    This works with the queue-based worker (migration 018).
+  //    The legacy polling worker already handles face_indexed = false above.
+  if (Array.isArray(resetPhotos) && resetPhotos.length > 0) {
+    try {
+      const queueJobs = (resetPhotos as { id: string; public_url: string }[]).map((photo) => ({
+        job_type: "index_photo",
+        payload: { photo_id: photo.id, event_id: eventId, public_url: photo.public_url },
+        event_id: eventId,
+        priority: 10,
+      }));
+
+      // Batch insert in chunks of 100 to avoid payload limits
+      const CHUNK = 100;
+      for (let i = 0; i < queueJobs.length; i += CHUNK) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: insertErr } = await (supabase as any)
+          .from("processing_queue")
+          .insert(queueJobs.slice(i, i + CHUNK));
+        if (insertErr) {
+          console.warn(`[admin-data] Could not insert queue jobs (chunk ${i}):`, insertErr.message);
+        }
+      }
+      console.log(`[admin-data] Enqueued ${queueJobs.length} index_photo jobs for event ${eventId}`);
+    } catch (err) {
+      // Non-fatal — legacy worker handles face_indexed = false as fallback
+      console.warn("[admin-data] processing_queue insert skipped (table may not exist):", err);
+    }
+  }
+
+  // 6. Reset any stuck guest selfies back to 'uploaded' so they get re-processed
+  //    and insert embed_selfie jobs for them as well
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: stuckSelfies } = await (supabase as any)
+      .from("guest_selfies")
+      .update({ status: "uploaded" })
+      .eq("event_id", eventId)
+      .in("status", ["processing", "no_face"])
+      .select("id, guest_id, public_url");
+
+    if (Array.isArray(stuckSelfies) && stuckSelfies.length > 0) {
+      const selfieJobs = (stuckSelfies as { id: string; guest_id: string; public_url: string }[]).map(
+        (selfie) => ({
+          job_type: "embed_selfie",
+          payload: {
+            selfie_id: selfie.id,
+            guest_id: selfie.guest_id,
+            event_id: eventId,
+            public_url: selfie.public_url,
+          },
+          event_id: eventId,
+          priority: 1,
+        })
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("processing_queue").insert(selfieJobs);
+      console.log(`[admin-data] Re-queued ${selfieJobs.length} embed_selfie jobs for event ${eventId}`);
+    }
+  } catch (err) {
+    // Non-fatal
+    console.warn("[admin-data] Could not re-queue selfie jobs:", err);
+  }
+
   return { success: true };
 }
+
 
