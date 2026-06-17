@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import { PageViewTracker } from "@/lib/analytics/trackVisit";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -180,6 +182,10 @@ export default function RootLayout({
             __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
           }}
         />
+        {/* Invisible page-view tracker — fires on every public page navigation */}
+        <Suspense fallback={null}>
+          <PageViewTracker />
+        </Suspense>
         {children}
       </body>
     </html>

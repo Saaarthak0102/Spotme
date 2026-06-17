@@ -809,3 +809,78 @@ export async function restartEventFaceDetection(eventId: string): Promise<{ succ
 }
 
 
+// -------------------------------------------------------
+// KPI Analytics — page_visits queries
+// -------------------------------------------------------
+
+export interface KPIData {
+  topSources: { source: string; visits: number }[];
+  pageVisits: { page: string; visits: number }[];
+  visitorCounts: { today: number; last7: number; last30: number; total: number };
+}
+
+export async function fetchKPIData(): Promise<KPIData> {
+  const supabase = getAdminClient();
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const last7Start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
+  const last30Start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30).toISOString();
+
+  // Fetch all page visits (we'll aggregate in JS since Supabase client
+  // doesn't support GROUP BY directly — the table should be manageable in size)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: allVisits, error } = await (supabase as any)
+    .from("page_visits")
+    .select("page_path, utm_source, visited_at")
+    .order("visited_at", { ascending: false })
+    .limit(50000); // safety cap
+
+  if (error) {
+    console.error("[admin-data] Error fetching page_visits:", error.message);
+    return {
+      topSources: [],
+      pageVisits: [],
+      visitorCounts: { today: 0, last7: 0, last30: 0, total: 0 },
+    };
+  }
+
+  const visits = (allVisits as { page_path: string; utm_source: string | null; visited_at: string }[]) ?? [];
+
+  // ── Top Sources (group by utm_source) ──
+  const sourceCounts: Record<string, number> = {};
+  for (const v of visits) {
+    const src = v.utm_source || "Direct";
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+  }
+  const topSources = Object.entries(sourceCounts)
+    .map(([source, count]) => ({ source, visits: count }))
+    .sort((a, b) => b.visits - a.visits);
+
+  // ── Page Visits (group by page_path) ──
+  const pageCounts: Record<string, number> = {};
+  for (const v of visits) {
+    pageCounts[v.page_path] = (pageCounts[v.page_path] || 0) + 1;
+  }
+  const pageVisits = Object.entries(pageCounts)
+    .map(([page, count]) => ({ page, visits: count }))
+    .sort((a, b) => b.visits - a.visits);
+
+  // ── Visitor counts by time range ──
+  const total = visits.length;
+  let today = 0;
+  let last7 = 0;
+  let last30 = 0;
+  for (const v of visits) {
+    const ts = v.visited_at;
+    if (ts >= todayStart) today++;
+    if (ts >= last7Start) last7++;
+    if (ts >= last30Start) last30++;
+  }
+
+  return {
+    topSources,
+    pageVisits,
+    visitorCounts: { today, last7, last30, total },
+  };
+}

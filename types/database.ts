@@ -101,6 +101,18 @@ export interface Inquiry {
   created_at: string;
 }
 
+export interface PageVisit {
+  id: string;
+  page_path: string;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  referrer: string | null;
+  session_id: string;
+  visited_at: string;
+}
+
 export interface EventCollaborator {
   id: string;
   event_id: string;
@@ -136,6 +148,8 @@ export type PhotoMatchUpdate = Partial<Omit<PhotoMatch, "id" | "matched_at">>;
 
 export type InquiryInsert = Omit<Inquiry, "id" | "created_at"> & { id?: string; created_at?: string };
 export type InquiryUpdate = Partial<Omit<Inquiry, "id" | "created_at">>;
+
+export type PageVisitInsert = Omit<PageVisit, "id" | "visited_at"> & { id?: string; visited_at?: string };
 
 export type EventCollaboratorInsert = Omit<EventCollaborator, "id" | "created_at"> & {
   id?: string;
@@ -196,6 +210,12 @@ export interface Database {
         Row: EventCollaborator;
         Insert: EventCollaboratorInsert;
         Update: EventCollaboratorUpdate;
+        Relationships: [];
+      };
+      page_visits: {
+        Row: PageVisit;
+        Insert: PageVisitInsert;
+        Update: Partial<PageVisitInsert>;
         Relationships: [];
       };
     };

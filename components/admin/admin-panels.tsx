@@ -12,6 +12,7 @@ const nav = [
   { label: "Photographers", href: "/admin/photographers", icon: "photo_camera" },
   { label: "Events", href: "/admin/events", icon: "photo_library" },
   { label: "Inquiries", href: "/admin/inquiries", icon: "mail" },
+  { label: "KPIs", href: "/admin/kpis", icon: "monitoring" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
@@ -2067,6 +2068,259 @@ export function AdminSettings() {
               </button>
             </div>
           )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   KPIs PAGE
+   ═══════════════════════════════════════════════ */
+
+interface KPIData {
+  topSources: { source: string; visits: number }[];
+  pageVisits: { page: string; visits: number }[];
+  visitorCounts: { today: number; last7: number; last30: number; total: number };
+}
+
+export function AdminKPIs() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [data, setData] = useState<KPIData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [visitorRange, setVisitorRange] = useState<"today" | "last7" | "last30" | "total">("total");
+
+  useEffect(() => {
+    fetch("/api/admin/kpis")
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const visitorRangeLabel: Record<string, string> = {
+    today: "Today",
+    last7: "Last 7 Days",
+    last30: "Last 30 Days",
+    total: "All Time",
+  };
+
+  return (
+    <div className="flex min-h-screen bg-[#FCF9F8]">
+      <AdminSidebar active="KPIs" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="flex-1 min-w-0 lg:pl-60">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1280px]">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-6 lg:mb-8">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
+              <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">Website KPIs</h1>
+              <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">UTM source attribution and page visit analytics.</p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center gap-3 text-[#827970] py-20 justify-center">
+              <span className="h-6 w-6 animate-spin rounded-full border-2 border-stone-200 border-t-[#D67D5C]" />
+              <span className="text-sm">Loading KPI data...</span>
+            </div>
+          ) : data ? (
+            <div className="space-y-8">
+
+              {/* ─── E. WEBSITE VISITORS (SUMMARY METRIC CARD) ─── */}
+              <section>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Website Visitors</h2>
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#B36144] text-white shadow-md shadow-primary/10">
+                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                      </span>
+                      <div>
+                        <p className="text-3xl font-bold tracking-tight text-[#2D2D2D]">
+                          {data.visitorCounts[visitorRange].toLocaleString()}
+                        </p>
+                        <p className="text-xs text-[#827970] font-medium">{visitorRangeLabel[visitorRange]}</p>
+                      </div>
+                    </div>
+                    {/* Time range tabs */}
+                    <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
+                      {(["today", "last7", "last30", "total"] as const).map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => setVisitorRange(range)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            visitorRange === range
+                              ? "bg-white text-[#2D2D2D] shadow-sm"
+                              : "text-[#827970] hover:text-[#2D2D2D]"
+                          }`}
+                        >
+                          {visitorRangeLabel[range]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
+                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">Today</p>
+                      <p className="text-xl font-bold text-[#2D2D2D] mt-2">{data.visitorCounts.today.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
+                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">7 Days</p>
+                      <p className="text-xl font-bold text-[#5B8DEF] mt-2">{data.visitorCounts.last7.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
+                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">30 Days</p>
+                      <p className="text-xl font-bold text-[#60D9A0] mt-2">{data.visitorCounts.last30.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
+                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">All Time</p>
+                      <p className="text-xl font-bold text-[#D67D5C] mt-2">{data.visitorCounts.total.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* ─── A. TOP TRAFFIC SOURCES + C. MOST VISITED PAGES ─── */}
+              <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {/* A. Top Traffic Sources */}
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                  <div className="px-6 pt-6 pb-4">
+                    <h2 className="text-sm font-bold text-[#2D2D2D]">Top Traffic Sources</h2>
+                    <p className="text-xs text-[#827970] mt-0.5">Grouped by UTM source parameter</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" id="kpi-sources-table">
+                      <thead>
+                        <tr className="border-b border-t border-[#EFE6DD] bg-[#FAF5EF]/50">
+                          <th className="text-left px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Source</th>
+                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EFE6DD]">
+                        {data.topSources.length === 0 ? (
+                          <tr>
+                            <td colSpan={2} className="px-6 py-8 text-center text-[#827970] text-sm">
+                              No visits tracked yet. Data will appear once visitors start arriving.
+                            </td>
+                          </tr>
+                        ) : (
+                          data.topSources.map((s, i) => (
+                            <tr key={i} className="hover:bg-stone-50/50 transition">
+                              <td className="px-6 py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${
+                                    s.source === "Direct" ? "bg-stone-100 text-stone-500" : "bg-[#D67D5C]/10 text-[#94492c]"
+                                  }`}>
+                                    {i + 1}
+                                  </span>
+                                  <span className="font-medium text-[#2D2D2D]">{s.source}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{s.visits.toLocaleString()}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* C. Most Visited Pages (top 5 ranked list) */}
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                  <h2 className="text-sm font-bold text-[#2D2D2D]">Most Visited Pages</h2>
+                  <p className="text-xs text-[#827970] mt-0.5 mb-4">Top 5 pages by visit count</p>
+                  {data.pageVisits.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-stone-300">
+                      <span className="material-symbols-outlined text-[32px] mb-2">web</span>
+                      <p className="text-sm text-[#827970]">No page visits yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {data.pageVisits.slice(0, 5).map((p, i) => {
+                        const maxVisits = data.pageVisits[0]?.visits || 1;
+                        const pct = (p.visits / maxVisits) * 100;
+                        return (
+                          <div key={i} className="group">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2.5">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#D67D5C]/10 text-[11px] font-bold text-[#94492c]">
+                                  {i + 1}
+                                </span>
+                                <span className="text-sm font-medium text-[#2D2D2D] group-hover:text-[#94492c] transition">{p.page}</span>
+                              </div>
+                              <span className="text-sm font-bold text-[#2D2D2D]">{p.visits.toLocaleString()}</span>
+                            </div>
+                            <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261] transition-all duration-700"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* ─── B. PAGE VISITS BY URL (full table) ─── */}
+              <section>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Page Visits by URL</h2>
+                <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" id="kpi-pages-table">
+                      <thead>
+                        <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                          <th className="text-left px-6 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Page</th>
+                          <th className="text-right px-6 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EFE6DD]">
+                        {data.pageVisits.length === 0 ? (
+                          <tr>
+                            <td colSpan={2} className="px-6 py-8 text-center text-[#827970] text-sm">No visits tracked yet.</td>
+                          </tr>
+                        ) : (
+                          data.pageVisits.map((p, i) => (
+                            <tr key={i} className="hover:bg-stone-50/50 transition">
+                              <td className="px-6 py-3.5 font-medium text-[#2D2D2D]">{p.page}</td>
+                              <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{p.visits.toLocaleString()}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+
+              {/* ─── D. SIGNUPS BY SOURCE (placeholder) ─── */}
+              <section>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Signups by Source</h2>
+                <div className="rounded-2xl border border-dashed border-[#EFE6DD] bg-white p-8 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
+                  <div className="flex flex-col items-center text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400 mb-3">
+                      <span className="material-symbols-outlined text-[24px]">link_off</span>
+                    </span>
+                    <h3 className="text-sm font-bold text-[#2D2D2D]">Not available yet</h3>
+                    <p className="text-xs text-[#827970] mt-1.5 max-w-md">
+                      Requires linking signup events to anonymous session_id. The current user registration
+                      flow does not capture the browser session identifier used for page visit tracking.
+                      Once this linkage is implemented, signup attribution by UTM source will appear here.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+            </div>
+          ) : null}
         </div>
       </main>
     </div>
