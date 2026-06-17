@@ -6,6 +6,7 @@ import Link from "next/link";
 import Header from "@/components/landing/navbar";
 import Footer from "@/components/landing/footer";
 import MobileNav from "@/components/landing/mobile-nav";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 // Import custom PNGs
 import catCameraManPointing from "../cat_camera_man_pointing.png";
@@ -89,12 +90,14 @@ export default function HomeClient() {
             <div className="stagger-in flex flex-col sm:flex-row items-center gap-4 w-full justify-center max-w-md">
               <Link
                 href="/inquire"
+                onClick={() => trackEvent("button_click", "Create Event")}
                 className="w-full sm:w-auto bg-primary text-on-primary font-sans font-semibold text-sm px-8 py-4 rounded-full hover:scale-[1.03] active:scale-95 duration-200 shadow-md transition-all text-center inline-block"
               >
                 Create Event
               </Link>
               <Link
                 href="/inquire"
+                onClick={() => trackEvent("button_click", "Book a Demo")}
                 className="w-full sm:w-auto bg-surface-container-lowest border border-outline-variant/30 text-primary font-sans font-semibold text-sm px-8 py-4 rounded-full hover:bg-surface-container-low active:scale-95 transition-all text-center inline-block"
               >
                 Book a Demo

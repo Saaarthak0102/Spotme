@@ -12,6 +12,7 @@ import {
 } from "@/lib/guest-data-client";
 import { downloadWithWatermark } from "@/lib/watermark-client";
 import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 import type { EventPhoto } from "@/types/database";
 
 // Tiny static blur placeholder for photos that don't have a blur_hash yet
@@ -39,6 +40,7 @@ export default function MyPhotosPage() {
 
   const handleDownload = async (photo: EventPhoto) => {
     if (!photo.public_url) return;
+    trackEvent("photo_download", photo.id, { page_path: `/event/${eventId}/my-photos` });
     if (eventType === "hackathon") {
       try {
         await downloadWithWatermark(photo.public_url, photo.original_filename || "event-photo.jpg");
@@ -122,6 +124,9 @@ export default function MyPhotosPage() {
         setPhotos(matched);
         setAiMatched(true);
         setMatchStatus("matched");
+        if (matched.length === 0) {
+          trackEvent("zero_result_search", "selfie", { page_path: `/event/${eventId}/my-photos` });
+        }
       } else if (status === "processing") {
         setPhotos([]);
         setAiMatched(false);
@@ -174,6 +179,9 @@ export default function MyPhotosPage() {
           const matched = await fetchMyPhotos(guestId, eventId);
           setPhotos(matched);
           setAiMatched(true);
+          if (matched.length === 0) {
+            trackEvent("zero_result_search", "selfie", { page_path: `/event/${eventId}/my-photos` });
+          }
         } else if (status === "processing" || status === "uploaded") {
           schedulePoll(guestId); // keep polling
         } else if (status === "no_face") {
@@ -336,6 +344,7 @@ export default function MyPhotosPage() {
           {aiMatched && photos.length > 0 && (
             <button
               onClick={() => {
+                trackEvent("feature_use", "download_photos");
                 photos.forEach((photo, index) => {
                   setTimeout(() => {
                     handleDownload(photo);

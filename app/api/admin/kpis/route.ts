@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin, fetchKPIData } from "@/lib/admin-data";
+import { requireAdmin, fetchExtendedKPIData } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,6 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const data = await fetchKPIData();
+  const data = await fetchExtendedKPIData();
   return NextResponse.json(data);
 }

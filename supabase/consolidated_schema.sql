@@ -41,6 +41,12 @@ DO $$ BEGIN
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE public.inquiry_status AS ENUM (
+    'new', 'qualified', 'demo_booked', 'closed_won', 'closed_lost'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- -------------------------------------------------------
 -- Profiles Table
 -- Mirrors auth.users; auto-populated by handle_new_user trigger.
@@ -57,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
                              CHECK (plan IN ('free', 'pro', 'unlimited')),
   max_events     integer     NOT NULL DEFAULT 1,
   max_storage_gb integer     NOT NULL DEFAULT 10,
+  signup_session_id text,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
@@ -235,8 +242,12 @@ CREATE TABLE IF NOT EXISTS public.inquiries (
   event_type  text,
   guest_count text,
   story       text,
+  status      public.inquiry_status NOT NULL DEFAULT 'new',
+  profile_id  uuid        REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS inquiries_profile_id_idx ON public.inquiries(profile_id);
 
 
 -- ============================================================

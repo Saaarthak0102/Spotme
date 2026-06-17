@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { AdminStats, PhotographerRow, AdminEventRow, AdminChartData, InquiryRow } from "@/lib/admin-data";
+import type { AdminStats, PhotographerRow, AdminEventRow, AdminChartData, InquiryRow, ExtendedKPIData } from "@/lib/admin-data";
 import { DonutChart, AreaLineChart, HorizontalBarChart } from "@/components/admin/charts";
 
 /* ── Sidebar nav items ── */
@@ -61,58 +61,57 @@ function AdminSidebar({ active, isOpen, onClose }: { active: string; isOpen?: bo
         <div className="fixed inset-0 z-20 bg-stone-900/40 backdrop-blur-sm lg:hidden" onClick={onClose} />
       )}
       <aside className={`fixed inset-y-0 left-0 w-60 border-r border-[#EFE6DD] bg-[#FAF5EF] flex flex-col z-30 transition-transform duration-300 ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-      {/* Brand */}
-      <div className="px-5 py-5 border-b border-[#EFE6DD]">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#B36144] text-white shadow-md shadow-primary/10">
-            <span className="material-symbols-outlined text-[16px]">shield</span>
-          </span>
-          <div>
-            <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Spotme Admin</span>
-            <p className="text-[10px] text-[#827970] font-medium leading-none mt-0.5">Super Admin</p>
+        {/* Brand */}
+        <div className="px-5 py-5 border-b border-[#EFE6DD]">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#B36144] text-white shadow-md shadow-primary/10">
+              <span className="material-symbols-outlined text-[16px]">shield</span>
+            </span>
+            <div>
+              <span className="text-sm font-bold text-[#2D2D2D] tracking-tight">Spotme Admin</span>
+              <p className="text-[10px] text-[#827970] font-medium leading-none mt-0.5">Super Admin</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {nav.map((item) => {
-          const isActive = active === item.label;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                isActive
-                  ? "bg-[#D67D5C]/10 text-[#94492c]"
-                  : "text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/40"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          {nav.map((item) => {
+            const isActive = active === item.label;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
+                    ? "bg-[#D67D5C]/10 text-[#94492c]"
+                    : "text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/40"
+                  }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t border-[#EFE6DD] space-y-1">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/40 transition"
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Back to Dashboard
-        </Link>
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#827970] hover:text-red-600 hover:bg-red-500/10 transition"
-        >
-          <span className="material-symbols-outlined text-[18px]">logout</span>
-          Sign Out
-        </button>
-      </div>
-    </aside>
+        {/* Footer */}
+        <div className="px-3 py-4 border-t border-[#EFE6DD] space-y-1">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/40 transition"
+          >
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            Back to Dashboard
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#827970] hover:text-red-600 hover:bg-red-500/10 transition"
+          >
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+            Sign Out
+          </button>
+        </div>
+      </aside>
     </>
   );
 }
@@ -252,9 +251,8 @@ function AIResourceEstimator({ todayPhotos, todaySelfies }: { todayPhotos: numbe
                           </div>
                           <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                (server.ram_used_pct ?? 0) > 85 ? "bg-red-500" : (server.ram_used_pct ?? 0) > 70 ? "bg-amber-500" : "bg-[#60D9A0]"
-                              }`}
+                              className={`h-full rounded-full transition-all duration-500 ${(server.ram_used_pct ?? 0) > 85 ? "bg-red-500" : (server.ram_used_pct ?? 0) > 70 ? "bg-amber-500" : "bg-[#60D9A0]"
+                                }`}
                               style={{ width: `${server.ram_used_pct}%` }}
                             />
                           </div>
@@ -582,47 +580,46 @@ export function AdminOverview() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[700px]">
                       <thead>
-                      <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Type</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EFE6DD]">
-                      {events.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="px-5 py-8 text-center text-[#827970] text-sm">No events yet.</td>
+                        <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Type</th>
+                          <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
+                          <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
                         </tr>
-                      )}
-                      {events.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-stone-50/50 transition">
-                          <td className="px-5 py-3.5">
-                            <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
-                            <p className="text-xs text-[#827970]">{ev.venue ?? "—"}</p>
-                          </td>
-                          <td className="px-5 py-3.5 text-[#2D2D2D] font-medium">{ev.ownerName ?? "—"}</td>
-                          <td className="px-5 py-3.5">
-                            <span className="capitalize text-[#827970] font-medium">{ev.event_type}</span>
-                          </td>
-                          <td className="px-5 py-3.5 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
-                          <td className="px-5 py-3.5 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              ev.status === "active"
-                                ? "bg-[#60D9A0]/15 text-[#2E7D32]"
-                                : ev.status === "draft"
-                                ? "bg-stone-100 text-stone-600"
-                                : "bg-stone-50 text-stone-400"
-                            }`}>
-                              {ev.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                      </thead>
+                      <tbody className="divide-y divide-[#EFE6DD]">
+                        {events.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-5 py-8 text-center text-[#827970] text-sm">No events yet.</td>
+                          </tr>
+                        )}
+                        {events.map((ev) => (
+                          <tr key={ev.id} className="hover:bg-stone-50/50 transition">
+                            <td className="px-5 py-3.5">
+                              <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
+                              <p className="text-xs text-[#827970]">{ev.venue ?? "—"}</p>
+                            </td>
+                            <td className="px-5 py-3.5 text-[#2D2D2D] font-medium">{ev.ownerName ?? "—"}</td>
+                            <td className="px-5 py-3.5">
+                              <span className="capitalize text-[#827970] font-medium">{ev.event_type}</span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
+                            <td className="px-5 py-3.5 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
+                            <td className="px-5 py-3.5">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${ev.status === "active"
+                                  ? "bg-[#60D9A0]/15 text-[#2E7D32]"
+                                  : ev.status === "draft"
+                                    ? "bg-stone-100 text-stone-600"
+                                    : "bg-stone-50 text-stone-400"
+                                }`}>
+                                {ev.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
                     </table>
                   </div>
                 </div>
@@ -706,137 +703,137 @@ function PhotographerModal({
           <p className="mt-1 text-sm text-[#827970]">{isEdit ? "Update their profile details." : "Create a new photographer account."}</p>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Full Name</label>
-            <input
-              required
-              maxLength={200}
-              value={form.full_name}
-              onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
-              placeholder="Jane Doe"
-            />
-          </div>
-
-          {!isEdit && (
-            <>
-              <div>
-                <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Email</label>
-                <input
-                  required
-                  type="email"
-                  maxLength={320}
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
-                  placeholder="photographer@email.com"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Password</label>
-                <input
-                  required
-                  type="password"
-                  minLength={8}
-                  maxLength={128}
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
-                  placeholder="Minimum 8 characters"
-                />
-              </div>
-            </>
-          )}
-
-          <div>
-            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Phone <span className="text-stone-400">(optional)</span></label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              maxLength={12}
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 12) }))}
-              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
-              placeholder="+91 98765 43210"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Subscription Plan</label>
-            <select
-              value={form.plan}
-              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value as any }))}
-              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] bg-white"
-            >
-              <option value="free">Free Plan (₹0 - 1 Event, 5GB)</option>
-              <option value="starter">Starter (₹499/mo - 1 Event, 20GB)</option>
-              <option value="pro">Personal Pro (₹999/mo - 4 Events, 60GB)</option>
-              <option value="studio_basic">Studio Basic (₹699/mo - 5 Events, 40GB)</option>
-              <option value="studio_pro">Studio Pro (₹1,599/mo - Unlimited, 100GB)</option>
-              <option value="custom">Custom Plan (Contact Sales to set up)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Bio <span className="text-stone-400">(optional)</span></label>
-            <textarea
-              rows={2}
-              maxLength={500}
-              value={form.bio}
-              onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
-              className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] resize-none"
-              placeholder="Short bio or specialization..."
-            />
-          </div>
-
-          <div className="border-t border-[#EFE6DD] pt-4 mt-2">
-            <label className="text-xs font-bold text-[#827970] uppercase tracking-wider block mb-2.5">Enabled Features</label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { id: "face_matching", label: "AI Face Matching" },
-                { id: "privacy_mode", label: "Privacy Mode" },
-                { id: "collaborators", label: "Collaborators" },
-                { id: "custom_branding", label: "Custom Branding" },
-              ].map((feat) => {
-                const isEnabled = !form.disabled_features.includes(feat.id);
-                return (
-                  <label key={feat.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-stone-50 border border-[#EFE6DD] hover:bg-stone-100/50 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={isEnabled}
-                      onChange={(e) => {
-                        const nextDisabled = e.target.checked
-                          ? form.disabled_features.filter((x) => x !== feat.id)
-                          : [...form.disabled_features, feat.id];
-                        setForm((f) => ({ ...f, disabled_features: nextDisabled }));
-                      }}
-                      className="accent-[#D67D5C] h-4.5 w-4.5 rounded"
-                    />
-                    <span className="text-xs font-semibold text-[#2D2D2D]">{feat.label}</span>
-                  </label>
-                );
-              })}
+            <div>
+              <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Full Name</label>
+              <input
+                required
+                maxLength={200}
+                value={form.full_name}
+                onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
+                placeholder="Jane Doe"
+              />
             </div>
-          </div>
 
-          {error && <p className="text-sm text-red-600 font-semibold">{error}</p>}
+            {!isEdit && (
+              <>
+                <div>
+                  <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Email</label>
+                  <input
+                    required
+                    type="email"
+                    maxLength={320}
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
+                    placeholder="photographer@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Password</label>
+                  <input
+                    required
+                    type="password"
+                    minLength={8}
+                    maxLength={128}
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
+                    placeholder="Minimum 8 characters"
+                  />
+                </div>
+              </>
+            )}
 
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-[#EFE6DD] px-4 py-2.5 text-sm font-semibold text-stone-600 hover:bg-stone-50 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/10 hover:opacity-90 transition disabled:opacity-50"
-            >
-              {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Account"}
-            </button>
-          </div>
+            <div>
+              <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Phone <span className="text-stone-400">(optional)</span></label>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={12}
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 12) }))}
+                className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C]"
+                placeholder="+91 98765 43210"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Subscription Plan</label>
+              <select
+                value={form.plan}
+                onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value as any }))}
+                className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2.5 text-sm text-[#2D2D2D] focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] bg-white"
+              >
+                <option value="free">Free Plan (₹0 - 1 Event, 5GB)</option>
+                <option value="starter">Starter (₹499/mo - 1 Event, 20GB)</option>
+                <option value="pro">Personal Pro (₹999/mo - 4 Events, 60GB)</option>
+                <option value="studio_basic">Studio Basic (₹699/mo - 5 Events, 40GB)</option>
+                <option value="studio_pro">Studio Pro (₹1,599/mo - Unlimited, 100GB)</option>
+                <option value="custom">Custom Plan (Contact Sales to set up)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-[#827970] uppercase tracking-wider">Bio <span className="text-stone-400">(optional)</span></label>
+              <textarea
+                rows={2}
+                maxLength={500}
+                value={form.bio}
+                onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                className="mt-1.5 w-full rounded-xl bg-stone-50/50 border border-[#EFE6DD] px-4 py-2 text-sm text-[#2D2D2D] placeholder:text-stone-400 focus:outline-none focus:border-[#D67D5C] focus:ring-1 focus:ring-[#D67D5C] resize-none"
+                placeholder="Short bio or specialization..."
+              />
+            </div>
+
+            <div className="border-t border-[#EFE6DD] pt-4 mt-2">
+              <label className="text-xs font-bold text-[#827970] uppercase tracking-wider block mb-2.5">Enabled Features</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: "face_matching", label: "AI Face Matching" },
+                  { id: "privacy_mode", label: "Privacy Mode" },
+                  { id: "collaborators", label: "Collaborators" },
+                  { id: "custom_branding", label: "Custom Branding" },
+                ].map((feat) => {
+                  const isEnabled = !form.disabled_features.includes(feat.id);
+                  return (
+                    <label key={feat.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-stone-50 border border-[#EFE6DD] hover:bg-stone-100/50 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={(e) => {
+                          const nextDisabled = e.target.checked
+                            ? form.disabled_features.filter((x) => x !== feat.id)
+                            : [...form.disabled_features, feat.id];
+                          setForm((f) => ({ ...f, disabled_features: nextDisabled }));
+                        }}
+                        className="accent-[#D67D5C] h-4.5 w-4.5 rounded"
+                      />
+                      <span className="text-xs font-semibold text-[#2D2D2D]">{feat.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-red-600 font-semibold">{error}</p>}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-xl border border-[#EFE6DD] px-4 py-2.5 text-sm font-semibold text-stone-600 hover:bg-stone-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#B36144] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/10 hover:opacity-90 transition disabled:opacity-50"
+              >
+                {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Account"}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -913,99 +910,98 @@ export function AdminPhotographers() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[700px]">
                   <thead>
-                  <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Events</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Plan</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Last Active</th>
-                    <th className="px-5 py-3.5" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFE6DD]">
-                  {photographers.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center">
-                        <span className="material-symbols-outlined text-[40px] text-stone-300 block mb-2">photo_camera</span>
-                        <p className="text-[#827970] text-sm">No photographers yet. Add one to get started.</p>
-                      </td>
+                    <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
+                      <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Events</th>
+                      <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Plan</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Last Active</th>
+                      <th className="px-5 py-3.5" />
                     </tr>
-                  )}
-                  {photographers.map((p) => (
-                    <tr key={p.id} className="hover:bg-stone-50/50 transition">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#D67D5C]/30 to-[#B36144]/20 text-[#94492c] text-sm font-bold flex-shrink-0">
-                            {(p.full_name ?? "?")[0].toUpperCase()}
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE6DD]">
+                    {photographers.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-5 py-12 text-center">
+                          <span className="material-symbols-outlined text-[40px] text-stone-300 block mb-2">photo_camera</span>
+                          <p className="text-[#827970] text-sm">No photographers yet. Add one to get started.</p>
+                        </td>
+                      </tr>
+                    )}
+                    {photographers.map((p) => (
+                      <tr key={p.id} className="hover:bg-stone-50/50 transition">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#D67D5C]/30 to-[#B36144]/20 text-[#94492c] text-sm font-bold flex-shrink-0">
+                              {(p.full_name ?? "?")[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-[#2D2D2D]">{p.full_name ?? "—"}</p>
+                              {p.bio && <p className="text-xs text-[#827970] truncate max-w-[180px]">{p.bio}</p>}
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-[#2D2D2D]">{p.full_name ?? "—"}</p>
-                            {p.bio && <p className="text-xs text-[#827970] truncate max-w-[180px]">{p.bio}</p>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-[#2D2D2D] text-sm font-medium">{p.email}</p>
-                        {p.phone && <p className="text-xs text-[#827970]">{p.phone}</p>}
-                      </td>
-                      <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.eventCount}</td>
-                      <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.photoCount}</td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          p.plan === "studio_pro" || (p.plan as string) === "unlimited"
-                            ? "bg-green-50 text-green-700 border border-green-200"
-                            : p.plan === "pro"
-                            ? "bg-[#D67D5C]/10 text-[#94492c] border border-[#D67D5C]/20"
-                            : p.plan === "studio_basic"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : p.plan === "starter"
-                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                            : p.plan === "custom"
-                            ? "bg-purple-50 text-purple-700 border border-purple-200"
-                            : "bg-stone-100 text-stone-600 border border-stone-200"
-                        }`}>
-                          {
-                            p.plan === "free" ? "Free Plan" :
-                            p.plan === "starter" ? "Starter" :
-                            p.plan === "pro" ? "Personal Pro" :
-                            p.plan === "studio_basic" ? "Studio Basic" :
-                            p.plan === "studio_pro" ? "Studio Pro" :
-                            p.plan === "custom" ? "Custom Plan" :
-                            p.plan === "unlimited" ? "Unlimited Plan" : p.plan
-                          }
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-[#827970] text-xs">
-                        {p.lastActive
-                          ? new Date(p.lastActive).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                          : "Never"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(p)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/50 transition"
-                            title="Edit"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(p.id)}
-                            disabled={deleting === p.id}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-red-600 hover:bg-red-50 transition disabled:opacity-40"
-                            title="Delete"
-                          >
-                            {deleting === p.id
-                              ? <span className="h-3.5 w-3.5 animate-spin rounded-full border border-stone-300 border-t-[#D67D5C]" />
-                              : <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <p className="text-[#2D2D2D] text-sm font-medium">{p.email}</p>
+                          {p.phone && <p className="text-xs text-[#827970]">{p.phone}</p>}
+                        </td>
+                        <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.eventCount}</td>
+                        <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{p.photoCount}</td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${p.plan === "studio_pro" || (p.plan as string) === "unlimited"
+                              ? "bg-green-50 text-green-700 border border-green-200"
+                              : p.plan === "pro"
+                                ? "bg-[#D67D5C]/10 text-[#94492c] border border-[#D67D5C]/20"
+                                : p.plan === "studio_basic"
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : p.plan === "starter"
+                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                    : p.plan === "custom"
+                                      ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                      : "bg-stone-100 text-stone-600 border border-stone-200"
+                            }`}>
+                            {
+                              p.plan === "free" ? "Free Plan" :
+                                p.plan === "starter" ? "Starter" :
+                                  p.plan === "pro" ? "Personal Pro" :
+                                    p.plan === "studio_basic" ? "Studio Basic" :
+                                      p.plan === "studio_pro" ? "Studio Pro" :
+                                        p.plan === "custom" ? "Custom Plan" :
+                                          p.plan === "unlimited" ? "Unlimited Plan" : p.plan
                             }
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[#827970] text-xs">
+                          {p.lastActive
+                            ? new Date(p.lastActive).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                            : "Never"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEdit(p)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/50 transition"
+                              title="Edit"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(p.id)}
+                              disabled={deleting === p.id}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-red-600 hover:bg-red-50 transition disabled:opacity-40"
+                              title="Delete"
+                            >
+                              {deleting === p.id
+                                ? <span className="h-3.5 w-3.5 animate-spin rounded-full border border-stone-300 border-t-[#D67D5C]" />
+                                : <span className="material-symbols-outlined text-[16px]">delete</span>
+                              }
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             </div>
@@ -1158,22 +1154,20 @@ export function AdminEvents() {
             <div className="flex items-center gap-2 bg-stone-100 rounded-xl p-1 self-start md:self-auto border border-[#EFE6DD]">
               <button
                 onClick={() => { setViewMode("calendar"); setSelectedDateStr(null); }}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  viewMode === "calendar"
+                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${viewMode === "calendar"
                     ? "bg-white text-[#94492c] shadow-[0_2px_8px_rgba(148,73,44,0.08)]"
                     : "text-[#827970] hover:text-[#2D2D2D]"
-                }`}
+                  }`}
               >
                 <span className="material-symbols-outlined text-[16px]">calendar_month</span>
                 Calendar View
               </button>
               <button
                 onClick={() => { setViewMode("list"); setSelectedDateStr(null); }}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  viewMode === "list"
+                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${viewMode === "list"
                     ? "bg-white text-[#94492c] shadow-[0_2px_8px_rgba(148,73,44,0.08)]"
                     : "text-[#827970] hover:text-[#2D2D2D]"
-                }`}
+                  }`}
               >
                 <span className="material-symbols-outlined text-[16px]">view_list</span>
                 List View
@@ -1240,15 +1234,13 @@ export function AdminEvents() {
                               setSelectedDateStr(isSelected ? null : dayStr);
                             }
                           }}
-                          className={`h-14 sm:h-20 rounded-xl border p-1 sm:p-2 flex flex-col justify-between transition-all duration-200 select-none ${
-                            dayEvents.length > 0
+                          className={`h-14 sm:h-20 rounded-xl border p-1 sm:p-2 flex flex-col justify-between transition-all duration-200 select-none ${dayEvents.length > 0
                               ? "cursor-pointer hover:bg-[#D67D5C]/5"
                               : "opacity-60"
-                          } ${
-                            isSelected
+                            } ${isSelected
                               ? "border-[#D67D5C] ring-2 ring-[#D67D5C]/20 bg-[#D67D5C]/5"
                               : "border-stone-100 bg-white"
-                          }`}
+                            }`}
                         >
                           <span className={`text-xs font-bold ${isSelected ? "text-[#94492c]" : "text-[#2D2D2D]"}`}>
                             {d}
@@ -1290,63 +1282,62 @@ export function AdminEvents() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[700px]">
                       <thead>
-                      <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Date</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
-                        <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Identified</th>
-                        <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EFE6DD]">
-                      {filteredEvents.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="px-5 py-12 text-center text-[#827970] text-sm font-semibold">
-                            No events found for this selection.
-                          </td>
+                        <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photographer</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Date</th>
+                          <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Photos</th>
+                          <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Guests</th>
+                          <th className="text-right px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Identified</th>
+                          <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Status</th>
                         </tr>
-                      )}
-                      {filteredEvents.map((ev) => (
-                        <tr 
-                          key={ev.id} 
-                          onClick={() => setSelectedEvent(ev)} 
-                          className="hover:bg-stone-50/50 transition cursor-pointer"
-                        >
-                          <td className="px-5 py-4">
-                            <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
-                            <p className="text-xs text-[#827970] capitalize font-medium">{ev.event_type} {ev.venue ? `· ${ev.venue}` : ""}</p>
-                          </td>
-                          <td className="px-5 py-4">
-                            <p className="text-[#2D2D2D] font-semibold">{ev.ownerName ?? "—"}</p>
-                            <p className="text-xs text-[#827970]">{ev.ownerEmail ?? ""}</p>
-                          </td>
-                          <td className="px-5 py-4 text-[#827970] text-xs font-medium">
-                            {ev.event_date
-                              ? new Date(ev.event_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                              : "—"}
-                          </td>
-                          <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
-                          <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
-                          <td className="px-5 py-4 text-right">
-                            <span className="font-bold text-[#2D2D2D]">{ev.identifiedCount}</span>
-                            <span className="text-xs text-[#827970]"> / {ev.guestCount}</span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              ev.status === "active"
-                                ? "bg-[#60D9A0]/15 text-[#2E7D32]"
-                                : ev.status === "draft"
-                                ? "bg-stone-100 text-stone-600"
-                                : "bg-stone-50 text-stone-400"
-                            }`}>
-                              {ev.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
+                      </thead>
+                      <tbody className="divide-y divide-[#EFE6DD]">
+                        {filteredEvents.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="px-5 py-12 text-center text-[#827970] text-sm font-semibold">
+                              No events found for this selection.
+                            </td>
+                          </tr>
+                        )}
+                        {filteredEvents.map((ev) => (
+                          <tr
+                            key={ev.id}
+                            onClick={() => setSelectedEvent(ev)}
+                            className="hover:bg-stone-50/50 transition cursor-pointer"
+                          >
+                            <td className="px-5 py-4">
+                              <p className="font-bold text-[#2D2D2D]">{ev.name}</p>
+                              <p className="text-xs text-[#827970] capitalize font-medium">{ev.event_type} {ev.venue ? `· ${ev.venue}` : ""}</p>
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="text-[#2D2D2D] font-semibold">{ev.ownerName ?? "—"}</p>
+                              <p className="text-xs text-[#827970]">{ev.ownerEmail ?? ""}</p>
+                            </td>
+                            <td className="px-5 py-4 text-[#827970] text-xs font-medium">
+                              {ev.event_date
+                                ? new Date(ev.event_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                                : "—"}
+                            </td>
+                            <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.photoCount}</td>
+                            <td className="px-5 py-4 text-right text-[#2D2D2D] font-bold">{ev.guestCount}</td>
+                            <td className="px-5 py-4 text-right">
+                              <span className="font-bold text-[#2D2D2D]">{ev.identifiedCount}</span>
+                              <span className="text-xs text-[#827970]"> / {ev.guestCount}</span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${ev.status === "active"
+                                  ? "bg-[#60D9A0]/15 text-[#2E7D32]"
+                                  : ev.status === "draft"
+                                    ? "bg-stone-100 text-stone-600"
+                                    : "bg-stone-50 text-stone-400"
+                                }`}>
+                                {ev.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
                     </table>
                   </div>
                 </div>
@@ -1400,8 +1391,8 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
     }
   };
 
-  const matchRate = event.guestCount > 0 
-    ? ((event.identifiedCount / event.guestCount) * 100).toFixed(1) 
+  const matchRate = event.guestCount > 0
+    ? ((event.identifiedCount / event.guestCount) * 100).toFixed(1)
     : "0.0";
 
   const formatBytes = (bytes: number) => {
@@ -1412,8 +1403,8 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const processPercentage = event.photoCount > 0 
-    ? ((event.indexedPhotoCount / event.photoCount) * 100).toFixed(1) 
+  const processPercentage = event.photoCount > 0
+    ? ((event.indexedPhotoCount / event.photoCount) * 100).toFixed(1)
     : "100.0";
 
   const formatDuration = (seconds: number) => {
@@ -1427,7 +1418,7 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-stone-900/40 backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
@@ -1435,25 +1426,24 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
 
       {/* Modal Card */}
       <div className="relative w-full max-w-2xl transform overflow-hidden rounded-[28px] border border-[#EFE6DD] bg-white/95 p-6 shadow-2xl backdrop-blur-xl transition-all sm:p-8 animate-in fade-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[#EFE6DD] pb-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                event.status === "active" ? "bg-[#60D9A0]/15 text-[#2E7D32]" : "bg-stone-100 text-stone-600"
-              }`}>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${event.status === "active" ? "bg-[#60D9A0]/15 text-[#2E7D32]" : "bg-stone-100 text-stone-600"
+                }`}>
                 {event.status}
               </span>
               <span className="text-xs text-[#827970] capitalize font-medium">{event.event_type}</span>
             </div>
             <h3 className="text-lg sm:text-xl font-bold tracking-tight text-[#2D2D2D] mt-1.5">{event.name}</h3>
             <p className="text-xs text-[#827970] mt-0.5">
-              Venue: <span className="font-semibold text-stone-700">{event.venue || "—"}</span> · 
+              Venue: <span className="font-semibold text-stone-700">{event.venue || "—"}</span> ·
               Date: <span className="font-semibold text-stone-700">{event.event_date ? new Date(event.event_date).toLocaleDateString("en-IN") : "—"}</span>
             </p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full border border-[#EFE6DD] bg-white text-[#827970] hover:text-[#2D2D2D] transition shadow-sm"
           >
@@ -1463,7 +1453,7 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
 
         {/* Bento Grid Stats */}
         <div className="grid gap-4 sm:grid-cols-2">
-          
+
           {/* Card 1: Guests & Matching */}
           <div className="rounded-2xl border border-[#EFE6DD] bg-gradient-to-br from-white to-[#FAF6F4] p-5">
             <div className="flex items-center justify-between text-[#827970] mb-4">
@@ -1552,8 +1542,8 @@ function EventStatsModal({ event, onClose, onRestartSuccess }: EventStatsModalPr
               <div className="flex justify-between text-sm">
                 <span className="text-[#625D58]">Avg Time / Photo:</span>
                 <span className="font-bold text-[#2D2D2D]">
-                  {event.indexedPhotoCount > 0 
-                    ? `${(event.totalProcessingTime / event.indexedPhotoCount).toFixed(2)}s` 
+                  {event.indexedPhotoCount > 0
+                    ? `${(event.totalProcessingTime / event.indexedPhotoCount).toFixed(2)}s`
                     : "0.00s"}
                 </span>
               </div>
@@ -1729,7 +1719,7 @@ export function AdminInquiries() {
                 <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Review and manage potential event inquiries submitted via the public portal.</p>
               </div>
             </div>
-            
+
             {/* Search Bar */}
             <div className="relative w-full md:w-80">
               <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#827970]">search</span>
@@ -1753,81 +1743,81 @@ export function AdminInquiries() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[700px]">
                   <thead>
-                  <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Inquirer</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event Details</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Type</th>
-                    <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Submitted</th>
-                    <th className="px-5 py-3.5" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFE6DD]">
-                  {filteredInquiries.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center">
-                        <span className="material-symbols-outlined text-[40px] text-stone-300 block mb-2">mail</span>
-                        <p className="text-[#827970] text-sm">No inquiries found.</p>
-                      </td>
+                    <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Inquirer</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Contact</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Event Details</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Type</th>
+                      <th className="text-left px-5 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Submitted</th>
+                      <th className="px-5 py-3.5" />
                     </tr>
-                  )}
-                  {filteredInquiries.map((inq) => (
-                    <tr key={inq.id} className="hover:bg-stone-50/50 transition duration-150">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#D67D5C]/20 to-[#B36144]/15 text-[#94492c] text-sm font-bold flex-shrink-0">
-                            {inq.name[0].toUpperCase()}
+                  </thead>
+                  <tbody className="divide-y divide-[#EFE6DD]">
+                    {filteredInquiries.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-12 text-center">
+                          <span className="material-symbols-outlined text-[40px] text-stone-300 block mb-2">mail</span>
+                          <p className="text-[#827970] text-sm">No inquiries found.</p>
+                        </td>
+                      </tr>
+                    )}
+                    {filteredInquiries.map((inq) => (
+                      <tr key={inq.id} className="hover:bg-stone-50/50 transition duration-150">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#D67D5C]/20 to-[#B36144]/15 text-[#94492c] text-sm font-bold flex-shrink-0">
+                              {inq.name[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-[#2D2D2D]">{inq.name}</p>
+                              {inq.guest_count && (
+                                <p className="text-xs text-[#827970]">{inq.guest_count.replace("-", " to ").replace("+", "+ guests").replace("under", "Under ")}</p>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-[#2D2D2D]">{inq.name}</p>
-                            {inq.guest_count && (
-                              <p className="text-xs text-[#827970]">{inq.guest_count.replace("-", " to ").replace("+", "+ guests").replace("under", "Under ")}</p>
-                            )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <p className="text-[#2D2D2D] text-sm font-medium">{inq.email}</p>
+                          {inq.phone && <p className="text-xs text-[#827970]">{inq.phone}</p>}
+                        </td>
+                        <td className="px-5 py-4">
+                          <p className="text-[#2D2D2D] text-sm font-medium">{inq.event_date || "—"}</p>
+                          {inq.location && <p className="text-xs text-[#827970]">{inq.location}</p>}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border capitalize ${getEventTypeColor(inq.event_type)}`}>
+                            {inq.event_type || "Other"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[#827970] text-xs font-medium">
+                          {timeAgo(inq.created_at)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setSelectedInquiry(inq)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/50 transition"
+                              title="View Details"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">visibility</span>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(inq.id)}
+                              disabled={deletingId === inq.id}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-red-600 hover:bg-red-50 transition disabled:opacity-40"
+                              title="Delete"
+                            >
+                              {deletingId === inq.id ? (
+                                <span className="h-3.5 w-3.5 animate-spin rounded-full border border-stone-300 border-t-[#D67D5C]" />
+                              ) : (
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              )}
+                            </button>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-[#2D2D2D] text-sm font-medium">{inq.email}</p>
-                        {inq.phone && <p className="text-xs text-[#827970]">{inq.phone}</p>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-[#2D2D2D] text-sm font-medium">{inq.event_date || "—"}</p>
-                        {inq.location && <p className="text-xs text-[#827970]">{inq.location}</p>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border capitalize ${getEventTypeColor(inq.event_type)}`}>
-                          {inq.event_type || "Other"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-[#827970] text-xs font-medium">
-                        {timeAgo(inq.created_at)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setSelectedInquiry(inq)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-[#2D2D2D] hover:bg-stone-200/50 transition"
-                            title="View Details"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">visibility</span>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(inq.id)}
-                            disabled={deletingId === inq.id}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-100 text-[#827970] hover:text-red-600 hover:bg-red-50 transition disabled:opacity-40"
-                            title="Delete"
-                          >
-                            {deletingId === inq.id ? (
-                              <span className="h-3.5 w-3.5 animate-spin rounded-full border border-stone-300 border-t-[#D67D5C]" />
-                            ) : (
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             </div>
@@ -2078,17 +2068,46 @@ export function AdminSettings() {
    KPIs PAGE
    ═══════════════════════════════════════════════ */
 
-interface KPIData {
-  topSources: { source: string; visits: number }[];
-  pageVisits: { page: string; visits: number }[];
-  visitorCounts: { today: number; last7: number; last30: number; total: number };
+function PlaceholderCard({ title, icon, reason }: { title: string; icon: string; reason: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-[#EFE6DD] bg-[#FAF5EF]/30 p-5 shadow-sm flex flex-col items-center text-center justify-center min-h-[160px]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 text-stone-400 mb-3">
+        <span className="material-symbols-outlined text-[20px]">{icon}</span>
+      </span>
+      <h3 className="text-xs font-bold text-[#2D2D2D] mb-1">{title}</h3>
+      <p className="text-[10px] text-[#827970] leading-relaxed max-w-[200px]">{reason}</p>
+    </div>
+  );
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
+function MetricCard({ title, value, icon, accent, sub }: { title: string; value: string | number; icon: string; accent?: string; sub?: string }) {
+  return (
+    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-5 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)] hover:shadow-md transition-shadow duration-300 flex flex-col justify-between min-h-[160px]">
+      <div className="flex items-start justify-between">
+        <span className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${accent || 'from-[#D67D5C] to-[#B36144] text-white'}`}>
+          <span className="material-symbols-outlined text-[20px]">{icon}</span>
+        </span>
+        {sub && <span className="text-[10px] font-semibold uppercase tracking-wider text-[#827970] bg-stone-100 px-2 py-1 rounded-md">{sub}</span>}
+      </div>
+      <div className="mt-4">
+        <p className="text-[10px] font-bold text-[#827970] uppercase tracking-widest">{title}</p>
+        <p className="mt-1 text-2xl font-bold tracking-tight text-[#2D2D2D]">{value}</p>
+      </div>
+    </div>
+  );
 }
 
 export function AdminKPIs() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [data, setData] = useState<KPIData | null>(null);
+  const [data, setData] = useState<ExtendedKPIData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [visitorRange, setVisitorRange] = useState<"today" | "last7" | "last30" | "total">("total");
 
   useEffect(() => {
     fetch("/api/admin/kpis")
@@ -2097,18 +2116,11 @@ export function AdminKPIs() {
       .finally(() => setLoading(false));
   }, []);
 
-  const visitorRangeLabel: Record<string, string> = {
-    today: "Today",
-    last7: "Last 7 Days",
-    last30: "Last 30 Days",
-    total: "All Time",
-  };
-
   return (
     <div className="flex min-h-screen bg-[#FCF9F8]">
       <AdminSidebar active="KPIs" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 min-w-0 lg:pl-60">
-        <div className="p-4 sm:p-6 lg:p-8 max-w-[1280px]">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6 lg:mb-8">
             <button
@@ -2119,8 +2131,8 @@ export function AdminKPIs() {
             </button>
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-              <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">Website KPIs</h1>
-              <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">UTM source attribution and page visit analytics.</p>
+              <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">System KPIs & Dashboard</h1>
+              <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Comprehensive breakdown of business metrics, traffic, and platform success.</p>
             </div>
           </div>
 
@@ -2130,156 +2142,192 @@ export function AdminKPIs() {
               <span className="text-sm">Loading KPI data...</span>
             </div>
           ) : data ? (
-            <div className="space-y-8">
+            <div className="space-y-10 animate-page-enter">
 
-              {/* ─── E. WEBSITE VISITORS (SUMMARY METRIC CARD) ─── */}
+              {/* ─── 1. BUSINESS METRICS ─── */}
               <section>
-                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Website Visitors</h2>
-                <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#D67D5C] to-[#B36144] text-white shadow-md shadow-primary/10">
-                        <span className="material-symbols-outlined text-[20px]">visibility</span>
-                      </span>
-                      <div>
-                        <p className="text-3xl font-bold tracking-tight text-[#2D2D2D]">
-                          {data.visitorCounts[visitorRange].toLocaleString()}
-                        </p>
-                        <p className="text-xs text-[#827970] font-medium">{visitorRangeLabel[visitorRange]}</p>
-                      </div>
-                    </div>
-                    {/* Time range tabs */}
-                    <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
-                      {(["today", "last7", "last30", "total"] as const).map((range) => (
-                        <button
-                          key={range}
-                          onClick={() => setVisitorRange(range)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                            visitorRange === range
-                              ? "bg-white text-[#2D2D2D] shadow-sm"
-                              : "text-[#827970] hover:text-[#2D2D2D]"
-                          }`}
-                        >
-                          {visitorRangeLabel[range]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
-                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">Today</p>
-                      <p className="text-xl font-bold text-[#2D2D2D] mt-2">{data.visitorCounts.today.toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
-                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">7 Days</p>
-                      <p className="text-xl font-bold text-[#5B8DEF] mt-2">{data.visitorCounts.last7.toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
-                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">30 Days</p>
-                      <p className="text-xl font-bold text-[#60D9A0] mt-2">{data.visitorCounts.last30.toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-xl bg-stone-50 p-3 border border-[#EFE6DD]">
-                      <p className="text-[10px] text-[#827970] font-semibold uppercase tracking-wider leading-none">All Time</p>
-                      <p className="text-xl font-bold text-[#D67D5C] mt-2">{data.visitorCounts.total.toLocaleString()}</p>
-                    </div>
-                  </div>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">payments</span>
+                  Business & Revenue
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Monthly Recurring Revenue" value={`₹${(data.mrr / 100).toLocaleString()}`} icon="account_balance_wallet" accent="from-green-500 to-emerald-600 text-white" />
+                  <MetricCard title="Paying Customers" value={data.payingCustomers.toLocaleString()} icon="loyalty" accent="from-blue-500 to-indigo-600 text-white" />
+                  <MetricCard title="Avg Revenue / Customer" value={`₹${(data.avgRevenuePerCustomer / 100).toLocaleString()}`} icon="query_stats" accent="from-amber-500 to-orange-600 text-white" />
+                  <MetricCard title="Total Inquiries" value={data.totalInquiries.toLocaleString()} icon="inbox" accent="from-stone-500 to-stone-600 text-white" />
+                  <PlaceholderCard title="Churn Rate" icon="person_remove" reason="Feature to add: historical subscription tracking with start/cancel dates to compute monthly churn." />
+                  <PlaceholderCard title="Lifetime Value (LTV)" icon="diamond" reason="Feature to add: a payments/transactions table recording each payment with timestamp and amount, so customer lifetime and revenue can be computed." />
                 </div>
               </section>
 
-              {/* ─── A. TOP TRAFFIC SOURCES + C. MOST VISITED PAGES ─── */}
-              <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* A. Top Traffic Sources */}
+              {/* ─── 2. TRAFFIC & MARKETING ─── */}
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">campaign</span>
+                  Traffic & Marketing
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Total Unique Visitors" value={data.totalVisitors.toLocaleString()} icon="group" />
+                  <MetricCard title="Visitor Growth Rate" value={data.visitorGrowthRate !== null ? `${data.visitorGrowthRate.toFixed(1)}%` : "N/A"} icon="trending_up" sub="vs Last Week" />
+                  <PlaceholderCard title="Customer Acquisition Cost" icon="attach_money" reason="Feature to add: a marketing spend input in Admin Settings, entered manually per period, to enable this calculation." />
+                  <PlaceholderCard title="Cost per Inquiry" icon="request_quote" reason="Feature to add: a marketing spend input in Admin Settings, entered manually per period, to enable this calculation." />
+                </div>
+              </section>
+
+              {/* ─── 3. SALES & CONVERSION ─── */}
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">storefront</span>
+                  Sales & Conversion
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Home → Pricing" value={`${data.homepageToPricingRate.toFixed(1)}%`} icon="ads_click" />
+                  <MetricCard title="Pricing → Inquiry" value={`${data.pricingToInquiryRate.toFixed(1)}%`} icon="shopping_cart_checkout" />
+                  <MetricCard title="Visitor → Customer" value={`${data.visitorToCustomerRate.toFixed(2)}%`} icon="workspace_premium" />
+                </div>
+              </section>
+
+              {/* ─── 4. PHOTOGRAPHER SUCCESS ─── */}
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">photo_camera</span>
+                  Photographer Success
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Active Photographers" value={data.activePhotographers.toLocaleString()} icon="linked_camera" sub="Last 30 Days" />
+                  <MetricCard title="New Photographers" value={data.newPhotographersOnboarded.toLocaleString()} icon="person_add" sub="Last 30 Days" />
+                  <MetricCard title="Repeat Event Rate" value={`${data.repeatPhotographerRate.toFixed(1)}%`} icon="replay" />
+                  <MetricCard title="Avg Events / Photographer" value={data.avgEventsPerPhotographer.toFixed(1)} icon="library_add" />
+                  <PlaceholderCard title="Photographer CSAT" icon="sentiment_satisfied" reason="Feature to add: a periodic satisfaction survey sent to photographers, with responses stored against their profile." />
+                  <PlaceholderCard title="Photographer Churn" icon="person_remove" reason="Feature to add: define an inactivity threshold (e.g. no events in N days) — awaiting confirmation of churn period." />
+                </div>
+              </section>
+
+              {/* ─── 5. USER ENGAGEMENT & EXPERIENCE ─── */}
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">touch_app</span>
+                  Engagement & Analytics
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Returning Visitors" value={`${data.returningVisitorRate.toFixed(1)}%`} icon="assignment_return" />
+                  <MetricCard title="Avg Pages / Session" value={data.avgPagesPerSession.toFixed(1)} icon="layers" />
+                  <MetricCard title="Session Duration" value={data.avgSessionDurationSec != null ? formatDuration(data.avgSessionDurationSec) : "N/A"} icon="timer" sub="Approximate" />
+                  <MetricCard title="CTA Click Rate" value={data.ctaClickRate != null ? `${data.ctaClickRate.toFixed(1)}%` : "N/A"} icon="ads_click" sub="Visitors who clicked" />
+                  <MetricCard title="Photo Search Rate" value={data.photoSearchRate != null ? `${data.photoSearchRate.toFixed(1)}%` : "N/A"} icon="search" sub={`${data.photoSearchCount || 0} searches`} />
+                  <MetricCard title="Photo Download Rate" value={data.photoDownloadRate != null ? `${data.photoDownloadRate.toFixed(1)}%` : "N/A"} icon="download" sub={`${data.photoDownloadCount || 0} downloads`} />
+                  <PlaceholderCard title="Photo Sharing Rate" icon="share" reason="Feature to add: a share button on gallery/my-photos pages using Web Share API or copy-link, with events tracked." />
+                  <MetricCard title="User Retention Rate" value={data.userRetentionRate != null ? `${data.userRetentionRate.toFixed(1)}%` : "N/A"} icon="event_repeat" sub={data.userRetentionRate == null ? "Need 2+ weeks data" : "Week over week"} />
+                </div>
+              </section>
+              
+              {/* ─── 6. CUSTOMER FEEDBACK ─── */}
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">support_agent</span>
+                  Customer Feedback
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <PlaceholderCard title="Net Promoter Score" icon="speed" reason="Feature to add: an NPS survey sent to customers asking the standard 0–10 'how likely to recommend' question, with responses stored and scored." />
+                  <PlaceholderCard title="CSAT Score" icon="sentiment_satisfied" reason="Feature to add: a post-interaction satisfaction survey (e.g. after a completed event) with a 1–5 rating captured and stored." />
+                  <PlaceholderCard title="Most Common Complaint" icon="feedback" reason="Feature to add: a complaint/feedback categorization system, likely tied to a support ticketing flow." />
+                  <PlaceholderCard title="Support Ticket Volume" icon="headset_mic" reason="Feature to add: a support ticketing system (or integration with one) to log when a user raises an issue." />
+                  <PlaceholderCard title="Support Resolution Time" icon="timer" reason="Feature to add: a support ticketing system with timestamps for ticket open and resolution to compute duration." />
+                  <PlaceholderCard title="Feature Requests" icon="add_box" reason="Feature to add: a feature request submission form or board where users can submit and upvote requests, covering both request count and most-requested tracking." />
+                </div>
+              </section>
+
+              {/* ─── 7. FEATURE DECISION METRICS ─── */}
+              <section>
+                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
+                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">model_training</span>
+                  Feature Decision Metrics
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Highest Drop-off Page" value={data.highestDropOffPage || "N/A"} icon="block" accent="from-red-500 to-rose-600 text-white" />
+                  <MetricCard title="Funnel Drop-off Step" value={data.funnelDropOffStep || "N/A"} icon="filter_alt_off" accent="from-red-500 to-rose-600 text-white" />
+                  <MetricCard title="Most Clicked Button" value={data.mostClickedButton || "N/A"} icon="touch_app" sub={data.mostClickedButtonCount > 0 ? `${data.mostClickedButtonCount} clicks` : undefined} />
+                  {data.mostUsedFeature != null ? (
+                    <MetricCard title="Most Used Feature" value={data.mostUsedFeature} icon="star" sub={`${data.mostUsedFeatureCount} uses`} />
+                  ) : (
+                    <MetricCard title="Most Used Feature" value="No data" icon="star" sub="No feature usage data yet" />
+                  )}
+                  {data.leastUsedFeature != null ? (
+                    <MetricCard title="Least Used Feature" value={data.leastUsedFeature} icon="visibility_off" sub={`${data.leastUsedFeatureCount} uses`} />
+                  ) : (
+                    <MetricCard title="Least Used Feature" value="No data" icon="visibility_off" sub="No feature usage data yet" />
+                  )}
+                  <PlaceholderCard title="Feature Adoption Rate" icon="trending_up" reason="Feature to add: define features and track first-use per user to compute adoption over time." />
+                  <PlaceholderCard title="Feature Abandonment" icon="trending_down" reason="Feature to add: track multi-step feature funnels to detect drop-offs post-engagement." />
+                  <MetricCard title="Zero-Result Searches" value={data.zeroResultSearches != null ? data.zeroResultSearches.toLocaleString() : "N/A"} icon="search_off" sub={data.photoSearchCount > 0 ? `of ${data.photoSearchCount} total searches` : undefined} />
+                </div>
+              </section>
+
+              {/* ─── 7. DATA TABLES ─── */}
+              <section className="grid grid-cols-1 gap-6 lg:grid-cols-2 pt-6 border-t border-[#EFE6DD]">
+                {/* Traffic Sources */}
                 <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <div className="px-6 pt-6 pb-4">
-                    <h2 className="text-sm font-bold text-[#2D2D2D]">Top Traffic Sources</h2>
-                    <p className="text-xs text-[#827970] mt-0.5">Grouped by UTM source parameter</p>
+                  <div className="px-6 pt-6 pb-4 flex justify-between items-center">
+                    <div>
+                      <h2 className="text-sm font-bold text-[#2D2D2D]">Traffic & Signups by Source</h2>
+                      <p className="text-xs text-[#827970] mt-0.5">Visits and Conversions by UTM</p>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm" id="kpi-sources-table">
+                    <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-t border-[#EFE6DD] bg-[#FAF5EF]/50">
                           <th className="text-left px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Source</th>
                           <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
+                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Signups</th>
+                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Conv Rate</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#EFE6DD]">
                         {data.topSources.length === 0 ? (
                           <tr>
-                            <td colSpan={2} className="px-6 py-8 text-center text-[#827970] text-sm">
-                              No visits tracked yet. Data will appear once visitors start arriving.
-                            </td>
+                            <td colSpan={4} className="px-6 py-8 text-center text-[#827970] text-sm">No data available.</td>
                           </tr>
                         ) : (
-                          data.topSources.map((s, i) => (
-                            <tr key={i} className="hover:bg-stone-50/50 transition">
-                              <td className="px-6 py-3.5">
-                                <div className="flex items-center gap-2">
-                                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${
-                                    s.source === "Direct" ? "bg-stone-100 text-stone-500" : "bg-[#D67D5C]/10 text-[#94492c]"
-                                  }`}>
-                                    {i + 1}
-                                  </span>
-                                  <span className="font-medium text-[#2D2D2D]">{s.source}</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{s.visits.toLocaleString()}</td>
-                            </tr>
-                          ))
+                          data.topSources.map((s, i) => {
+                            const signupData = data.signupsBySource.find(x => x.source === s.source);
+                            const signups = signupData ? signupData.signups : 0;
+                            const rateData = data.conversionRateBySource.find(x => x.source === s.source);
+                            const rate = rateData ? rateData.rate : 0;
+                            return (
+                              <tr key={i} className="hover:bg-stone-50/50 transition">
+                                <td className="px-6 py-3.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${s.source === "Direct" ? "bg-stone-100 text-stone-500" : "bg-[#D67D5C]/10 text-[#94492c]"}`}>
+                                      {i + 1}
+                                    </span>
+                                    <span className="font-medium text-[#2D2D2D]">{s.source}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{s.visits.toLocaleString()}</td>
+                                <td className="px-6 py-3.5 text-right font-bold text-[#5B8DEF]">{signups.toLocaleString()}</td>
+                                <td className="px-6 py-3.5 text-right font-bold text-[#60D9A0]">{rate.toFixed(1)}%</td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                {/* C. Most Visited Pages (top 5 ranked list) */}
-                <div className="rounded-2xl border border-[#EFE6DD] bg-white p-6 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <h2 className="text-sm font-bold text-[#2D2D2D]">Most Visited Pages</h2>
-                  <p className="text-xs text-[#827970] mt-0.5 mb-4">Top 5 pages by visit count</p>
-                  {data.pageVisits.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-stone-300">
-                      <span className="material-symbols-outlined text-[32px] mb-2">web</span>
-                      <p className="text-sm text-[#827970]">No page visits yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {data.pageVisits.slice(0, 5).map((p, i) => {
-                        const maxVisits = data.pageVisits[0]?.visits || 1;
-                        const pct = (p.visits / maxVisits) * 100;
-                        return (
-                          <div key={i} className="group">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2.5">
-                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#D67D5C]/10 text-[11px] font-bold text-[#94492c]">
-                                  {i + 1}
-                                </span>
-                                <span className="text-sm font-medium text-[#2D2D2D] group-hover:text-[#94492c] transition">{p.page}</span>
-                              </div>
-                              <span className="text-sm font-bold text-[#2D2D2D]">{p.visits.toLocaleString()}</span>
-                            </div>
-                            <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-gradient-to-r from-[#D67D5C] to-[#F4A261] transition-all duration-700"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {/* ─── B. PAGE VISITS BY URL (full table) ─── */}
-              <section>
-                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Page Visits by URL</h2>
+                {/* Page Visits */}
                 <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm" id="kpi-pages-table">
-                      <thead>
-                        <tr className="border-b border-[#EFE6DD] bg-[#FAF5EF]/50">
-                          <th className="text-left px-6 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Page</th>
-                          <th className="text-right px-6 py-3.5 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
+                  <div className="px-6 pt-6 pb-4">
+                    <h2 className="text-sm font-bold text-[#2D2D2D]">Page Visits Breakdown</h2>
+                    <p className="text-xs text-[#827970] mt-0.5">Top performing URLs</p>
+                  </div>
+                  <div className="overflow-x-auto max-h-[300px]">
+                    <table className="w-full text-sm relative">
+                      <thead className="sticky top-0 bg-[#FAF5EF]/95 backdrop-blur-sm shadow-sm z-10">
+                        <tr className="border-b border-t border-[#EFE6DD]">
+                          <th className="text-left px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Page Path</th>
+                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#EFE6DD]">
@@ -2290,31 +2338,13 @@ export function AdminKPIs() {
                         ) : (
                           data.pageVisits.map((p, i) => (
                             <tr key={i} className="hover:bg-stone-50/50 transition">
-                              <td className="px-6 py-3.5 font-medium text-[#2D2D2D]">{p.page}</td>
+                              <td className="px-6 py-3.5 font-medium text-[#2D2D2D] truncate max-w-[200px]">{p.page}</td>
                               <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{p.visits.toLocaleString()}</td>
                             </tr>
                           ))
                         )}
                       </tbody>
                     </table>
-                  </div>
-                </div>
-              </section>
-
-              {/* ─── D. SIGNUPS BY SOURCE (placeholder) ─── */}
-              <section>
-                <h2 className="text-xs font-bold uppercase tracking-widest text-[#827970]/80 mb-4">Signups by Source</h2>
-                <div className="rounded-2xl border border-dashed border-[#EFE6DD] bg-white p-8 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <div className="flex flex-col items-center text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400 mb-3">
-                      <span className="material-symbols-outlined text-[24px]">link_off</span>
-                    </span>
-                    <h3 className="text-sm font-bold text-[#2D2D2D]">Not available yet</h3>
-                    <p className="text-xs text-[#827970] mt-1.5 max-w-md">
-                      Requires linking signup events to anonymous session_id. The current user registration
-                      flow does not capture the browser session identifier used for page visit tracking.
-                      Once this linkage is implemented, signup attribution by UTM source will appear here.
-                    </p>
                   </div>
                 </div>
               </section>

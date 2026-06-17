@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 type UploadStep = "idle" | "camera" | "uploading" | "processing" | "done";
 
@@ -224,7 +225,13 @@ export default function FindMePage() {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      // ── Step 4: Switch to processing animation ───────────────────────
+      // ── Step 4: Track photo search event ──────────────────────────
+      trackEvent("photo_search", "selfie", {
+        page_path: `/event/${eventId}/find-me`,
+        metadata: { event_id: eventId, guest_id: guestId },
+      });
+
+      // ── Step 5: Switch to processing animation ───────────────────────
       setStep("processing");
       let dotCount = 0;
       const dotInterval = setInterval(() => {

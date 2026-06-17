@@ -1,4 +1,5 @@
 "use client";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -1024,6 +1025,8 @@ export function CreateEventModal({ isOpen, onClose }: { isOpen: boolean; onClose
     setCoverPreview(null);
     setLoading(false);
     onClose();
+
+    trackEvent("feature_use", "create_event");
 
     // Navigate to the new event workspace
     router.push(`/dashboard/events/${newEvent.id}`);

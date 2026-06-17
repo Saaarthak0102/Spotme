@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 export default function Header() {
   const pathname = usePathname();
@@ -53,6 +54,7 @@ export default function Header() {
           </Link>
           <Link
             href="/inquire"
+            onClick={() => trackEvent("button_click", "Inquire")}
             className="bg-primary text-on-primary font-sans font-semibold text-sm px-6 py-2.5 rounded-xl hover:scale-[1.05] active:scale-95 duration-200 shadow-sm transition-all text-center inline-block"
           >
             Inquire

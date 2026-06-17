@@ -152,9 +152,8 @@ export default function Register() {
                   onChange={(e) => setFullName(e.target.value)}
                   maxLength={200}
                   autoComplete="name"
-                  className={`w-full bg-surface-bright border-none ring-1 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${
-                    fieldErrors.fullName ? "ring-red-400" : "ring-outline-variant/30"
-                  }`}
+                  className={`w-full bg-surface-bright border-none ring-1 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${fieldErrors.fullName ? "ring-red-400" : "ring-outline-variant/30"
+                    }`}
                   placeholder="Your full name"
                 />
                 {fieldErrors.fullName && (
@@ -176,9 +175,8 @@ export default function Register() {
                   }}
                   maxLength={320}
                   autoComplete="email"
-                  className={`w-full bg-surface-bright border-none ring-1 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${
-                    fieldErrors.email ? "ring-red-400" : "ring-outline-variant/30"
-                  }`}
+                  className={`w-full bg-surface-bright border-none ring-1 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${fieldErrors.email ? "ring-red-400" : "ring-outline-variant/30"
+                    }`}
                   placeholder="hello@domain.com"
                 />
                 {fieldErrors.email && (
@@ -199,9 +197,8 @@ export default function Register() {
                     minLength={8}
                     maxLength={128}
                     autoComplete="new-password"
-                    className={`w-full bg-surface-bright border-none ring-1 rounded-xl pl-4 pr-11 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${
-                      fieldErrors.password ? "ring-red-400" : "ring-outline-variant/30"
-                    }`}
+                    className={`w-full bg-surface-bright border-none ring-1 rounded-xl pl-4 pr-11 py-3.5 focus:ring-2 focus:ring-primary quint-ease outline-none text-sm font-sans ${fieldErrors.password ? "ring-red-400" : "ring-outline-variant/30"
+                      }`}
                     placeholder="At least 8 characters"
                   />
                   <button

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
 import { PlanLimitModal } from "./plan-limit-modal";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 /* ── Reusable Mini Stat Card ────────────────────── */
 function MiniStat({
@@ -160,6 +161,7 @@ export function EventOverviewPanel({
     if (error) {
       setInviteError(error.message);
     } else {
+      trackEvent("feature_use", "manage_collaborators", { action: "add" });
       setInviteEmail("");
       fetchCollaborators();
     }
@@ -176,6 +178,7 @@ export function EventOverviewPanel({
     if (error) {
       alert("Failed to remove collaborator: " + error.message);
     } else {
+      trackEvent("feature_use", "manage_collaborators", { action: "remove" });
       fetchCollaborators();
     }
   };
@@ -1031,6 +1034,7 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
     const nextQueue = [...store.queue, ...queueEntries];
     updateStore(event.id, { queue: nextQueue });
 
+    trackEvent("feature_use", "upload_photos");
     runUploadWorker(event.id, () => router.refresh());
   };
 
@@ -1511,9 +1515,11 @@ export function QrPanel({ event, guestCount }: { event: EventRecord; guestCount:
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(eventUrl);
+    trackEvent("feature_use", "share_qr_copy_link");
   };
 
   const handleDownloadQr = async () => {
+    trackEvent("feature_use", "share_qr_download");
     try {
       const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(eventUrl)}`;
       const res = await fetch(qrImageUrl);

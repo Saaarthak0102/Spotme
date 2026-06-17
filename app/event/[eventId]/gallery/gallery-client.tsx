@@ -7,6 +7,7 @@ import type { EventPhoto } from "@/types/database";
 import { fetchGuestGalleryClient } from "@/lib/guest-data-client";
 import { getOptimizedStorageUrl } from "@/lib/image-optimizer";
 import { downloadWithWatermark } from "@/lib/watermark-client";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 // Fallback blur placeholder
 const FALLBACK_BLUR =
@@ -33,6 +34,7 @@ export function GalleryPageClient({
 
   const handleDownload = async (photo: EventPhoto) => {
     if (!photo.public_url) return;
+    trackEvent("photo_download", photo.id, { page_path: `/event/${eventId}/gallery` });
     if (eventType === "hackathon") {
       try {
         await downloadWithWatermark(photo.public_url, photo.original_filename || "event-photo.jpg");
@@ -101,6 +103,7 @@ export function GalleryPageClient({
           </div>
           <Link
             href={`/event/${eventId}/find-me`}
+            onClick={() => trackEvent("button_click", "Find My Photos")}
             className="flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#D67D5C] to-[#C46A4A] px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 active:scale-[0.98] sm:h-10 sm:gap-2 sm:px-5 sm:text-sm"
           >
             <span className="material-symbols-outlined text-[16px] sm:text-[18px]">

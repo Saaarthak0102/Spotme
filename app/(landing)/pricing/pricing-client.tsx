@@ -5,6 +5,7 @@ import Header from "@/components/landing/navbar";
 import Footer from "@/components/landing/footer";
 import MobileNav from "@/components/landing/mobile-nav";
 import Link from "next/link";
+import { trackEvent } from "@/lib/analytics/trackEvent";
 
 // ── Plan data ────────────────────────────────────────────────────────────────
 
@@ -508,6 +509,7 @@ export default function PricingClient() {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <Link
                 href="/login"
+                onClick={() => trackEvent("button_click", "Start Free")}
                 className="bg-white text-primary px-8 py-3.5 rounded-xl font-semibold text-sm hover:bg-white/95 transition-all duration-200 shadow-sm"
               >
                 Start Free — No Credit Card
