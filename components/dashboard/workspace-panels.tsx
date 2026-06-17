@@ -161,7 +161,7 @@ export function EventOverviewPanel({
     if (error) {
       setInviteError(error.message);
     } else {
-      trackEvent("feature_use", "manage_collaborators", { action: "add" });
+      trackEvent("feature_use", "manage_collaborators", { metadata: { action: "add" } });
       setInviteEmail("");
       fetchCollaborators();
     }
@@ -178,7 +178,7 @@ export function EventOverviewPanel({
     if (error) {
       alert("Failed to remove collaborator: " + error.message);
     } else {
-      trackEvent("feature_use", "manage_collaborators", { action: "remove" });
+      trackEvent("feature_use", "manage_collaborators", { metadata: { action: "remove" } });
       fetchCollaborators();
     }
   };

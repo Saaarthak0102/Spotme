@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AdminStats, PhotographerRow, AdminEventRow, AdminChartData, InquiryRow, ExtendedKPIData } from "@/lib/admin-data";
 import { DonutChart, AreaLineChart, HorizontalBarChart } from "@/components/admin/charts";
+import { AdminKPIsPanel } from "@/components/admin/admin-kpi-panel";
 
 /* ── Sidebar nav items ── */
 const nav = [
@@ -2065,292 +2066,25 @@ export function AdminSettings() {
 }
 
 /* ══════════════════════════════════════════════
-   KPIs PAGE
+   KPIs PAGE — New Interactive Panel
    ═══════════════════════════════════════════════ */
 
-function PlaceholderCard({ title, icon, reason }: { title: string; icon: string; reason: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[#EFE6DD] bg-[#FAF5EF]/30 p-5 shadow-sm flex flex-col items-center text-center justify-center min-h-[160px]">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 text-stone-400 mb-3">
-        <span className="material-symbols-outlined text-[20px]">{icon}</span>
-      </span>
-      <h3 className="text-xs font-bold text-[#2D2D2D] mb-1">{title}</h3>
-      <p className="text-[10px] text-[#827970] leading-relaxed max-w-[200px]">{reason}</p>
-    </div>
-  );
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
-
-function MetricCard({ title, value, icon, accent, sub }: { title: string; value: string | number; icon: string; accent?: string; sub?: string }) {
-  return (
-    <div className="rounded-2xl border border-[#EFE6DD] bg-white p-5 shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)] hover:shadow-md transition-shadow duration-300 flex flex-col justify-between min-h-[160px]">
-      <div className="flex items-start justify-between">
-        <span className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${accent || 'from-[#D67D5C] to-[#B36144] text-white'}`}>
-          <span className="material-symbols-outlined text-[20px]">{icon}</span>
-        </span>
-        {sub && <span className="text-[10px] font-semibold uppercase tracking-wider text-[#827970] bg-stone-100 px-2 py-1 rounded-md">{sub}</span>}
-      </div>
-      <div className="mt-4">
-        <p className="text-[10px] font-bold text-[#827970] uppercase tracking-widest">{title}</p>
-        <p className="mt-1 text-2xl font-bold tracking-tight text-[#2D2D2D]">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-export function AdminKPIs() {
+export function AdminKPIsWrapper() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [data, setData] = useState<ExtendedKPIData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/admin/kpis")
-      .then((r) => r.json())
-      .then((d) => setData(d))
-      .finally(() => setLoading(false));
-  }, []);
 
   return (
     <div className="flex min-h-screen bg-[#FCF9F8]">
       <AdminSidebar active="KPIs" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 min-w-0 lg:pl-60">
         <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-6 lg:mb-8">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50"
-            >
-              <span className="material-symbols-outlined text-[22px]">menu</span>
-            </button>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#D67D5C]">Admin</p>
-              <h1 className="mt-0.5 text-xl sm:text-2xl font-bold text-[#2D2D2D] tracking-tight">System KPIs & Dashboard</h1>
-              <p className="mt-1 text-xs sm:text-sm text-[#827970] hidden sm:block">Comprehensive breakdown of business metrics, traffic, and platform success.</p>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center gap-3 text-[#827970] py-20 justify-center">
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-stone-200 border-t-[#D67D5C]" />
-              <span className="text-sm">Loading KPI data...</span>
-            </div>
-          ) : data ? (
-            <div className="space-y-10 animate-page-enter">
-
-              {/* ─── 1. BUSINESS METRICS ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">payments</span>
-                  Business & Revenue
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard title="Monthly Recurring Revenue" value={`₹${(data.mrr / 100).toLocaleString()}`} icon="account_balance_wallet" accent="from-green-500 to-emerald-600 text-white" />
-                  <MetricCard title="Paying Customers" value={data.payingCustomers.toLocaleString()} icon="loyalty" accent="from-blue-500 to-indigo-600 text-white" />
-                  <MetricCard title="Avg Revenue / Customer" value={`₹${(data.avgRevenuePerCustomer / 100).toLocaleString()}`} icon="query_stats" accent="from-amber-500 to-orange-600 text-white" />
-                  <MetricCard title="Total Inquiries" value={data.totalInquiries.toLocaleString()} icon="inbox" accent="from-stone-500 to-stone-600 text-white" />
-                  <PlaceholderCard title="Churn Rate" icon="person_remove" reason="Feature to add: historical subscription tracking with start/cancel dates to compute monthly churn." />
-                  <PlaceholderCard title="Lifetime Value (LTV)" icon="diamond" reason="Feature to add: a payments/transactions table recording each payment with timestamp and amount, so customer lifetime and revenue can be computed." />
-                </div>
-              </section>
-
-              {/* ─── 2. TRAFFIC & MARKETING ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">campaign</span>
-                  Traffic & Marketing
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard title="Total Unique Visitors" value={data.totalVisitors.toLocaleString()} icon="group" />
-                  <MetricCard title="Visitor Growth Rate" value={data.visitorGrowthRate !== null ? `${data.visitorGrowthRate.toFixed(1)}%` : "N/A"} icon="trending_up" sub="vs Last Week" />
-                  <PlaceholderCard title="Customer Acquisition Cost" icon="attach_money" reason="Feature to add: a marketing spend input in Admin Settings, entered manually per period, to enable this calculation." />
-                  <PlaceholderCard title="Cost per Inquiry" icon="request_quote" reason="Feature to add: a marketing spend input in Admin Settings, entered manually per period, to enable this calculation." />
-                </div>
-              </section>
-
-              {/* ─── 3. SALES & CONVERSION ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">storefront</span>
-                  Sales & Conversion
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard title="Home → Pricing" value={`${data.homepageToPricingRate.toFixed(1)}%`} icon="ads_click" />
-                  <MetricCard title="Pricing → Inquiry" value={`${data.pricingToInquiryRate.toFixed(1)}%`} icon="shopping_cart_checkout" />
-                  <MetricCard title="Visitor → Customer" value={`${data.visitorToCustomerRate.toFixed(2)}%`} icon="workspace_premium" />
-                </div>
-              </section>
-
-              {/* ─── 4. PHOTOGRAPHER SUCCESS ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">photo_camera</span>
-                  Photographer Success
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard title="Active Photographers" value={data.activePhotographers.toLocaleString()} icon="linked_camera" sub="Last 30 Days" />
-                  <MetricCard title="New Photographers" value={data.newPhotographersOnboarded.toLocaleString()} icon="person_add" sub="Last 30 Days" />
-                  <MetricCard title="Repeat Event Rate" value={`${data.repeatPhotographerRate.toFixed(1)}%`} icon="replay" />
-                  <MetricCard title="Avg Events / Photographer" value={data.avgEventsPerPhotographer.toFixed(1)} icon="library_add" />
-                  <PlaceholderCard title="Photographer CSAT" icon="sentiment_satisfied" reason="Feature to add: a periodic satisfaction survey sent to photographers, with responses stored against their profile." />
-                  <PlaceholderCard title="Photographer Churn" icon="person_remove" reason="Feature to add: define an inactivity threshold (e.g. no events in N days) — awaiting confirmation of churn period." />
-                </div>
-              </section>
-
-              {/* ─── 5. USER ENGAGEMENT & EXPERIENCE ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">touch_app</span>
-                  Engagement & Analytics
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard title="Returning Visitors" value={`${data.returningVisitorRate.toFixed(1)}%`} icon="assignment_return" />
-                  <MetricCard title="Avg Pages / Session" value={data.avgPagesPerSession.toFixed(1)} icon="layers" />
-                  <MetricCard title="Session Duration" value={data.avgSessionDurationSec != null ? formatDuration(data.avgSessionDurationSec) : "N/A"} icon="timer" sub="Approximate" />
-                  <MetricCard title="CTA Click Rate" value={data.ctaClickRate != null ? `${data.ctaClickRate.toFixed(1)}%` : "N/A"} icon="ads_click" sub="Visitors who clicked" />
-                  <MetricCard title="Photo Search Rate" value={data.photoSearchRate != null ? `${data.photoSearchRate.toFixed(1)}%` : "N/A"} icon="search" sub={`${data.photoSearchCount || 0} searches`} />
-                  <MetricCard title="Photo Download Rate" value={data.photoDownloadRate != null ? `${data.photoDownloadRate.toFixed(1)}%` : "N/A"} icon="download" sub={`${data.photoDownloadCount || 0} downloads`} />
-                  <PlaceholderCard title="Photo Sharing Rate" icon="share" reason="Feature to add: a share button on gallery/my-photos pages using Web Share API or copy-link, with events tracked." />
-                  <MetricCard title="User Retention Rate" value={data.userRetentionRate != null ? `${data.userRetentionRate.toFixed(1)}%` : "N/A"} icon="event_repeat" sub={data.userRetentionRate == null ? "Need 2+ weeks data" : "Week over week"} />
-                </div>
-              </section>
-              
-              {/* ─── 6. CUSTOMER FEEDBACK ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">support_agent</span>
-                  Customer Feedback
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <PlaceholderCard title="Net Promoter Score" icon="speed" reason="Feature to add: an NPS survey sent to customers asking the standard 0–10 'how likely to recommend' question, with responses stored and scored." />
-                  <PlaceholderCard title="CSAT Score" icon="sentiment_satisfied" reason="Feature to add: a post-interaction satisfaction survey (e.g. after a completed event) with a 1–5 rating captured and stored." />
-                  <PlaceholderCard title="Most Common Complaint" icon="feedback" reason="Feature to add: a complaint/feedback categorization system, likely tied to a support ticketing flow." />
-                  <PlaceholderCard title="Support Ticket Volume" icon="headset_mic" reason="Feature to add: a support ticketing system (or integration with one) to log when a user raises an issue." />
-                  <PlaceholderCard title="Support Resolution Time" icon="timer" reason="Feature to add: a support ticketing system with timestamps for ticket open and resolution to compute duration." />
-                  <PlaceholderCard title="Feature Requests" icon="add_box" reason="Feature to add: a feature request submission form or board where users can submit and upvote requests, covering both request count and most-requested tracking." />
-                </div>
-              </section>
-
-              {/* ─── 7. FEATURE DECISION METRICS ─── */}
-              <section>
-                <h2 className="text-sm font-bold uppercase tracking-widest text-[#2D2D2D] mb-4 flex items-center gap-2 border-b border-[#EFE6DD] pb-2">
-                  <span className="material-symbols-outlined text-[#D67D5C] text-[18px]">model_training</span>
-                  Feature Decision Metrics
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard title="Highest Drop-off Page" value={data.highestDropOffPage || "N/A"} icon="block" accent="from-red-500 to-rose-600 text-white" />
-                  <MetricCard title="Funnel Drop-off Step" value={data.funnelDropOffStep || "N/A"} icon="filter_alt_off" accent="from-red-500 to-rose-600 text-white" />
-                  <MetricCard title="Most Clicked Button" value={data.mostClickedButton || "N/A"} icon="touch_app" sub={data.mostClickedButtonCount > 0 ? `${data.mostClickedButtonCount} clicks` : undefined} />
-                  {data.mostUsedFeature != null ? (
-                    <MetricCard title="Most Used Feature" value={data.mostUsedFeature} icon="star" sub={`${data.mostUsedFeatureCount} uses`} />
-                  ) : (
-                    <MetricCard title="Most Used Feature" value="No data" icon="star" sub="No feature usage data yet" />
-                  )}
-                  {data.leastUsedFeature != null ? (
-                    <MetricCard title="Least Used Feature" value={data.leastUsedFeature} icon="visibility_off" sub={`${data.leastUsedFeatureCount} uses`} />
-                  ) : (
-                    <MetricCard title="Least Used Feature" value="No data" icon="visibility_off" sub="No feature usage data yet" />
-                  )}
-                  <PlaceholderCard title="Feature Adoption Rate" icon="trending_up" reason="Feature to add: define features and track first-use per user to compute adoption over time." />
-                  <PlaceholderCard title="Feature Abandonment" icon="trending_down" reason="Feature to add: track multi-step feature funnels to detect drop-offs post-engagement." />
-                  <MetricCard title="Zero-Result Searches" value={data.zeroResultSearches != null ? data.zeroResultSearches.toLocaleString() : "N/A"} icon="search_off" sub={data.photoSearchCount > 0 ? `of ${data.photoSearchCount} total searches` : undefined} />
-                </div>
-              </section>
-
-              {/* ─── 7. DATA TABLES ─── */}
-              <section className="grid grid-cols-1 gap-6 lg:grid-cols-2 pt-6 border-t border-[#EFE6DD]">
-                {/* Traffic Sources */}
-                <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <div className="px-6 pt-6 pb-4 flex justify-between items-center">
-                    <div>
-                      <h2 className="text-sm font-bold text-[#2D2D2D]">Traffic & Signups by Source</h2>
-                      <p className="text-xs text-[#827970] mt-0.5">Visits and Conversions by UTM</p>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-t border-[#EFE6DD] bg-[#FAF5EF]/50">
-                          <th className="text-left px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Source</th>
-                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
-                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Signups</th>
-                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Conv Rate</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#EFE6DD]">
-                        {data.topSources.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="px-6 py-8 text-center text-[#827970] text-sm">No data available.</td>
-                          </tr>
-                        ) : (
-                          data.topSources.map((s, i) => {
-                            const signupData = data.signupsBySource.find(x => x.source === s.source);
-                            const signups = signupData ? signupData.signups : 0;
-                            const rateData = data.conversionRateBySource.find(x => x.source === s.source);
-                            const rate = rateData ? rateData.rate : 0;
-                            return (
-                              <tr key={i} className="hover:bg-stone-50/50 transition">
-                                <td className="px-6 py-3.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`inline-flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-bold ${s.source === "Direct" ? "bg-stone-100 text-stone-500" : "bg-[#D67D5C]/10 text-[#94492c]"}`}>
-                                      {i + 1}
-                                    </span>
-                                    <span className="font-medium text-[#2D2D2D]">{s.source}</span>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{s.visits.toLocaleString()}</td>
-                                <td className="px-6 py-3.5 text-right font-bold text-[#5B8DEF]">{signups.toLocaleString()}</td>
-                                <td className="px-6 py-3.5 text-right font-bold text-[#60D9A0]">{rate.toFixed(1)}%</td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Page Visits */}
-                <div className="rounded-2xl border border-[#EFE6DD] bg-white overflow-hidden shadow-[0_4px_20px_-4px_rgba(148,73,44,0.03)]">
-                  <div className="px-6 pt-6 pb-4">
-                    <h2 className="text-sm font-bold text-[#2D2D2D]">Page Visits Breakdown</h2>
-                    <p className="text-xs text-[#827970] mt-0.5">Top performing URLs</p>
-                  </div>
-                  <div className="overflow-x-auto max-h-[300px]">
-                    <table className="w-full text-sm relative">
-                      <thead className="sticky top-0 bg-[#FAF5EF]/95 backdrop-blur-sm shadow-sm z-10">
-                        <tr className="border-b border-t border-[#EFE6DD]">
-                          <th className="text-left px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Page Path</th>
-                          <th className="text-right px-6 py-3 text-xs font-bold text-[#827970] uppercase tracking-wider">Visits</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#EFE6DD]">
-                        {data.pageVisits.length === 0 ? (
-                          <tr>
-                            <td colSpan={2} className="px-6 py-8 text-center text-[#827970] text-sm">No visits tracked yet.</td>
-                          </tr>
-                        ) : (
-                          data.pageVisits.map((p, i) => (
-                            <tr key={i} className="hover:bg-stone-50/50 transition">
-                              <td className="px-6 py-3.5 font-medium text-[#2D2D2D] truncate max-w-[200px]">{p.page}</td>
-                              <td className="px-6 py-3.5 text-right font-bold text-[#2D2D2D]">{p.visits.toLocaleString()}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </section>
-
-            </div>
-          ) : null}
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#EFE6DD] bg-white text-[#827970] transition hover:bg-stone-50 mb-4"
+          >
+            <span className="material-symbols-outlined text-[22px]">menu</span>
+          </button>
+          <AdminKPIsPanel />
         </div>
       </main>
     </div>

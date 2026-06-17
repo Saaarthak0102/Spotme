@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin-data";
-import { AdminKPIs } from "@/components/admin/admin-panels";
+import { AdminKPIsWrapper } from "@/components/admin/admin-panels";
 
 export const dynamic = "force-dynamic";
 
@@ -14,5 +14,5 @@ export default async function KPIsPage() {
   const isAdmin = await requireAdmin(user.id);
   if (!isAdmin) redirect("/dashboard");
 
-  return <AdminKPIs />;
+  return <AdminKPIsWrapper />;
 }
