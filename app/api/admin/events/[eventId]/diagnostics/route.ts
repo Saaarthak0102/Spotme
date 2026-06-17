@@ -61,10 +61,13 @@ export async function GET(
       console.warn("Failed to retrieve owner email from Auth service:", authErr);
     }
 
-    // 2. Fetch all photos for this event
+    // 2. Fetch all photos for this event (including face embeddings count directly)
     const { data: photos, error: photosErr } = await supabaseAdmin
       .from("event_photos")
-      .select("id, original_filename, public_url, face_indexed, face_indexed_at, processing_time, uploaded_at")
+      .select(`
+        id, original_filename, public_url, face_indexed, face_indexed_at, processing_time, uploaded_at,
+        face_embeddings (count)
+      `)
       .eq("event_id", eventId)
       .order("uploaded_at", { ascending: false });
 
@@ -93,15 +96,8 @@ export async function GET(
       return NextResponse.json({ error: selfiesErr.message }, { status: 500 });
     }
 
-    // 5. Fetch all face embeddings for this event (to count embeddings per photo)
-    const { data: embeddings, error: embeddingsErr } = await supabaseAdmin
-      .from("face_embeddings")
-      .select("id, photo_id")
-      .eq("event_id", eventId);
-
-    if (embeddingsErr) {
-      return NextResponse.json({ error: embeddingsErr.message }, { status: 500 });
-    }
+    // 5. Standalone face_embeddings query removed to bypass PostgREST limit.
+    // Count is fetched inline with event_photos.
 
     // 6. Fetch all photo matches (to count matches per guest)
     const { data: matches, error: matchesErr } = await supabaseAdmin
@@ -126,13 +122,7 @@ export async function GET(
       // Non-fatal if table doesn't exist
     }
 
-    // Aggregate embeddings by photo
-    const embeddingsByPhoto: Record<string, number> = {};
-    embeddings?.forEach((emb) => {
-      if (emb.photo_id) {
-        embeddingsByPhoto[emb.photo_id] = (embeddingsByPhoto[emb.photo_id] || 0) + 1;
-      }
-    });
+    // Aggregation of embeddingsByPhoto removed since count is fetched nested.
 
     // Aggregate failed queue job errors by selfie_id
     const selfieErrors: Record<string, string> = {};
@@ -154,7 +144,7 @@ export async function GET(
     const totalPhotos = photos.length;
     const indexedPhotos = photos.filter((p) => p.face_indexed).length;
     const pendingPhotos = totalPhotos - indexedPhotos;
-    const totalFacesDetected = embeddings?.length || 0;
+    const totalFacesDetected = photos?.reduce((acc, p: any) => acc + (p.face_embeddings?.[0]?.count || 0), 0) || 0;
     const totalProcessingTime = photos.reduce((acc, p) => acc + (p.processing_time || 0), 0);
     const avgProcessingTime = indexedPhotos > 0 ? totalProcessingTime / indexedPhotos : 0;
 
@@ -172,14 +162,14 @@ export async function GET(
     };
 
     // Format individual lists
-    const photoDetails = photos.map((p) => ({
+    const photoDetails = photos.map((p: any) => ({
       id: p.id,
       original_filename: p.original_filename,
       public_url: p.public_url,
       face_indexed: p.face_indexed,
       face_indexed_at: p.face_indexed_at,
       processing_time: p.processing_time,
-      faces_count: embeddingsByPhoto[p.id] || 0,
+      faces_count: p.face_embeddings?.[0]?.count || 0,
       uploaded_at: p.uploaded_at,
     }));
 

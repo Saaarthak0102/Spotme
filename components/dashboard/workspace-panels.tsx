@@ -706,6 +706,9 @@ interface UploadStore {
   isUploading: boolean;
   listeners: Set<() => void>;
   isUploadingWorkerRunning: boolean;
+  isOffline?: boolean;
+  retryCountdown?: number;
+  offlineIntervalId?: any;
 }
 
 const globalUploadStores: Record<string, UploadStore> = {};
@@ -718,6 +721,9 @@ function getUploadStore(eventId: string): UploadStore {
       isUploading: false,
       listeners: new Set(),
       isUploadingWorkerRunning: false,
+      isOffline: false,
+      retryCountdown: undefined,
+      offlineIntervalId: null,
     };
   }
   return globalUploadStores[eventId];
@@ -727,6 +733,85 @@ function updateStore(eventId: string, updates: Partial<Omit<UploadStore, "listen
   const store = getUploadStore(eventId);
   Object.assign(store, updates);
   store.listeners.forEach((listener) => listener());
+}
+
+async function checkInternetConnection(): Promise<boolean> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(`/favicon.ico?t=${Date.now()}`, {
+      method: "HEAD",
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    clearTimeout(timeoutId);
+    return response.ok || response.status < 500;
+  } catch (e) {
+    return false;
+  }
+}
+
+function startOfflineRecovery(eventId: string, routerRefresh: () => void) {
+  const store = getUploadStore(eventId);
+  if (store.isOffline) return;
+
+  if (store.offlineIntervalId) {
+    clearInterval(store.offlineIntervalId);
+    store.offlineIntervalId = null;
+  }
+
+  updateStore(eventId, { isOffline: true, retryCountdown: 30 });
+
+  let secondsLeft = 30;
+  const intervalId = setInterval(async () => {
+    if (store.isPaused || store.queue.length === 0) {
+      clearInterval(intervalId);
+      store.offlineIntervalId = null;
+      updateStore(eventId, { isOffline: false, retryCountdown: undefined });
+      return;
+    }
+
+    secondsLeft -= 1;
+    updateStore(eventId, { retryCountdown: secondsLeft });
+
+    if (secondsLeft <= 0) {
+      clearInterval(intervalId);
+      store.offlineIntervalId = null;
+      updateStore(eventId, { retryCountdown: undefined });
+
+      const online = await checkInternetConnection();
+      if (online) {
+        updateStore(eventId, { isOffline: false });
+        runUploadWorker(eventId, routerRefresh);
+      } else {
+        updateStore(eventId, { isOffline: false });
+        startOfflineRecovery(eventId, routerRefresh);
+      }
+    }
+  }, 1000);
+
+  store.offlineIntervalId = intervalId;
+}
+
+async function triggerManualRetry(eventId: string, routerRefresh: () => void) {
+  const store = getUploadStore(eventId);
+  if (store.offlineIntervalId) {
+    clearInterval(store.offlineIntervalId);
+    store.offlineIntervalId = null;
+  }
+  updateStore(eventId, { retryCountdown: undefined });
+
+  const online = await checkInternetConnection();
+  if (online) {
+    updateStore(eventId, { isOffline: false });
+    runUploadWorker(eventId, routerRefresh);
+  } else {
+    updateStore(eventId, { isOffline: false });
+    startOfflineRecovery(eventId, routerRefresh);
+  }
 }
 
 async function runUploadWorker(eventId: string, routerRefresh: () => void) {
@@ -745,6 +830,20 @@ async function runUploadWorker(eventId: string, routerRefresh: () => void) {
     const nextItem = store.queue.find((item) => item.state === "Pending");
     if (!nextItem) {
       break;
+    }
+
+    // Check internet connection before starting the upload
+    const initiallyOnline = await checkInternetConnection();
+    if (!initiallyOnline) {
+      // Revert the item state and stop worker
+      store.queue = store.queue.map((item) =>
+        item.id === nextItem.id ? { ...item, progress: 0, state: "Pending" as const } : item
+      );
+      updateStore(eventId, { queue: store.queue });
+      store.isUploadingWorkerRunning = false;
+      updateStore(eventId, { isUploading: false });
+      startOfflineRecovery(eventId, routerRefresh);
+      return;
     }
 
     // Mark current item as Uploading
@@ -774,6 +873,11 @@ async function runUploadWorker(eventId: string, routerRefresh: () => void) {
       clearInterval(interval);
 
       if (error) {
+        const online = await checkInternetConnection();
+        if (!online) {
+          throw new Error("NetworkError");
+        }
+
         store.queue = store.queue.map((item) =>
           item.id === nextItem.id ? { ...item, progress: 100, state: "Error" as const } : item
         );
@@ -782,18 +886,28 @@ async function runUploadWorker(eventId: string, routerRefresh: () => void) {
       }
 
       const { data: urlData } = supabase.storage.from("event-photos").getPublicUrl(storagePath);
-      const res = await fetch("/api/photos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event_id: eventId,
-          storage_path: storagePath,
-          public_url: urlData.publicUrl,
-          original_filename: file.name,
-          file_size_bytes: file.size,
-          mime_type: file.type,
-        }),
-      });
+      
+      let res;
+      try {
+        res = await fetch("/api/photos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_id: eventId,
+            storage_path: storagePath,
+            public_url: urlData.publicUrl,
+            original_filename: file.name,
+            file_size_bytes: file.size,
+            mime_type: file.type,
+          }),
+        });
+      } catch (fetchErr) {
+        const online = await checkInternetConnection();
+        if (!online) {
+          throw new Error("NetworkError");
+        }
+        throw fetchErr;
+      }
 
       if (!res.ok) {
         throw new Error("Failed to insert photo record");
@@ -806,10 +920,23 @@ async function runUploadWorker(eventId: string, routerRefresh: () => void) {
     } catch (err) {
       clearInterval(interval);
       console.error("Upload error:", err);
-      store.queue = store.queue.map((item) =>
-        item.id === nextItem.id ? { ...item, progress: 100, state: "Error" as const } : item
-      );
-      updateStore(eventId, { queue: store.queue });
+      
+      const online = await checkInternetConnection();
+      if (!online || err === "NetworkError" || (err instanceof Error && err.message === "NetworkError")) {
+        store.queue = store.queue.map((item) =>
+          item.id === nextItem.id ? { ...item, progress: 0, state: "Pending" as const } : item
+        );
+        updateStore(eventId, { queue: store.queue });
+        store.isUploadingWorkerRunning = false;
+        updateStore(eventId, { isUploading: false });
+        startOfflineRecovery(eventId, routerRefresh);
+        return;
+      } else {
+        store.queue = store.queue.map((item) =>
+          item.id === nextItem.id ? { ...item, progress: 100, state: "Error" as const } : item
+        );
+        updateStore(eventId, { queue: store.queue });
+      }
     }
   }
 
@@ -826,6 +953,8 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
   const [uploadQueue, setUploadQueue] = useState<PersistentQueueItem[]>(store.queue);
   const [isPaused, setIsPaused] = useState(store.isPaused);
   const [isUploading, setIsUploading] = useState(store.isUploading);
+  const [isOffline, setIsOffline] = useState(store.isOffline || false);
+  const [retryCountdown, setRetryCountdown] = useState(store.retryCountdown);
   const [isDragging, setIsDragging] = useState(false);
 
   const [selectedPhoto, setSelectedPhoto] = useState<EventPhoto | null>(null);
@@ -841,6 +970,8 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
       setUploadQueue(store.queue);
       setIsPaused(store.isPaused);
       setIsUploading(store.isUploading);
+      setIsOffline(store.isOffline || false);
+      setRetryCountdown(store.retryCountdown);
     };
 
     store.listeners.add(handleStoreChange);
@@ -850,6 +981,20 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
       store.listeners.delete(handleStoreChange);
     };
   }, [store]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      const currentStore = getUploadStore(event.id);
+      if (currentStore.isOffline) {
+        triggerManualRetry(event.id, () => router.refresh());
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [event.id, router]);
 
   const handleDeletePhoto = async (photo: EventPhoto) => {
     if (!confirm("Are you sure you want to permanently delete this photo?")) return;
@@ -890,25 +1035,37 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
   };
 
   const handlePause = () => {
+    if (store.offlineIntervalId) {
+      clearInterval(store.offlineIntervalId);
+      store.offlineIntervalId = null;
+    }
     const nextQueue = store.queue.map((item) =>
       item.state === "Pending" ? { ...item, state: "Paused" as const } : item
     );
-    updateStore(event.id, { isPaused: true, queue: nextQueue });
+    updateStore(event.id, { isPaused: true, queue: nextQueue, isOffline: false, retryCountdown: undefined });
   };
 
   const handleResume = () => {
+    if (store.offlineIntervalId) {
+      clearInterval(store.offlineIntervalId);
+      store.offlineIntervalId = null;
+    }
     const nextQueue = store.queue.map((item) =>
       item.state === "Paused" ? { ...item, state: "Pending" as const } : item
     );
-    updateStore(event.id, { isPaused: false, queue: nextQueue });
+    updateStore(event.id, { isPaused: false, queue: nextQueue, isOffline: false, retryCountdown: undefined });
     runUploadWorker(event.id, () => router.refresh());
   };
 
   const handleCancel = () => {
+    if (store.offlineIntervalId) {
+      clearInterval(store.offlineIntervalId);
+      store.offlineIntervalId = null;
+    }
     const nextQueue = store.queue.filter(
       (item) => item.state === "Processed" || item.state === "Error"
     );
-    updateStore(event.id, { queue: nextQueue, isPaused: false });
+    updateStore(event.id, { queue: nextQueue, isPaused: false, isOffline: false, retryCountdown: undefined });
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -969,6 +1126,30 @@ export function UploadsPanel({ event, photos }: { event: EventRecord; photos: Ev
             </button>
           </div>
         </section>
+
+        {isOffline && (
+          <div className="rounded-[22px] border border-amber-200 bg-amber-50/70 p-4.5 backdrop-blur-md transition-all duration-300 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 animate-pulse">
+                <span className="material-symbols-outlined text-[20px]">wifi_off</span>
+              </span>
+              <div>
+                <h4 className="text-sm font-semibold text-amber-900">Upload Paused (No Internet)</h4>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Connection is lost or not responding. Retrying in <span className="font-bold">{retryCountdown ?? 30}s</span>...
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => triggerManualRetry(event.id, () => router.refresh())}
+              type="button"
+              className="w-full sm:w-auto rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-semibold text-white transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[14px]">sync</span>
+              Retry Now
+            </button>
+          </div>
+        )}
 
         {/* Global Progress Statistics Banner */}
         {uploadQueue.length > 0 && (
